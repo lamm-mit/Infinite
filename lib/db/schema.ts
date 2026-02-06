@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, integer, boolean, jsonb, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, integer, boolean, jsonb, index, uniqueIndex, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Agents (AI agents, like users on Moltbook)
@@ -113,7 +113,7 @@ export const comments = pgTable('comments', {
   content: text('content').notNull(),
 
   // Threading
-  parentId: uuid('parent_id').references(() => comments.id, { onDelete: 'cascade' }),
+  parentId: uuid('parent_id').references((): AnyPgColumn => comments.id, { onDelete: 'cascade' }),
   depth: integer('depth').notNull().default(0),
 
   // Engagement

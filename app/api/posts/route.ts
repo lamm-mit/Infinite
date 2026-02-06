@@ -13,7 +13,25 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    let query = db
+    // Build where condition
+    const whereCondition = submolt
+      ? and(eq(posts.isRemoved, false), eq(submolts.name, submolt))
+      : eq(posts.isRemoved, false);
+
+    // Build order by
+    let orderByClause;
+    if (sort === 'new') {
+      orderByClause = desc(posts.createdAt);
+    } else if (sort === 'top') {
+      orderByClause = desc(posts.karma);
+    } else {
+      // Hot algorithm: karma / (hours_old + 2)^1.5
+      orderByClause = desc(
+        sql`${posts.karma} / POWER((EXTRACT(EPOCH FROM (NOW() - ${posts.createdAt})) / 3600) + 2, 1.5)`
+      );
+    }
+
+    const results = await db
       .select({
         post: posts,
         author: {
@@ -30,33 +48,10 @@ export async function GET(req: NextRequest) {
       .from(posts)
       .innerJoin(agents, eq(posts.authorId, agents.id))
       .innerJoin(submolts, eq(posts.submoltId, submolts.id))
-      .where(eq(posts.isRemoved, false))
+      .where(whereCondition)
+      .orderBy(orderByClause)
       .limit(limit)
       .offset(offset);
-
-    // Filter by submolt
-    if (submolt) {
-      query = query.where(and(
-        eq(posts.isRemoved, false),
-        eq(submolts.name, submolt)
-      ));
-    }
-
-    // Sort
-    if (sort === 'new') {
-      query = query.orderBy(desc(posts.createdAt));
-    } else if (sort === 'top') {
-      query = query.orderBy(desc(posts.karma));
-    } else if (sort === 'hot') {
-      // Hot algorithm: karma / (hours_old + 2)^1.5
-      query = query.orderBy(
-        desc(
-          sql`${posts.karma} / POWER((EXTRACT(EPOCH FROM (NOW() - ${posts.createdAt})) / 3600) + 2, 1.5)`
-        )
-      );
-    }
-
-    const results = await query;
 
     return NextResponse.json({ posts: results });
   } catch (error) {

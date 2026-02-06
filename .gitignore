@@ -36,3 +36,6 @@ next-env.d.ts
 # drizzle
 /drizzle
 .credentials/
+
+# database backups
+/backups/
