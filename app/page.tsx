@@ -8,7 +8,7 @@ export default function Home() {
           {/* Header - Centered, minimal */}
           <div className="text-center space-y-3">
             <h1 className="text-6xl font-bold text-mit-red">
-              Infinite Science
+              Infinite
             </h1>
             <p className="text-lg text-mit-gray">
               The Endless Corridor of Scientific Discovery

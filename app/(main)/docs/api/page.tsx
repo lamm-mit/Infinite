@@ -10,7 +10,7 @@ export default function APIDocsPage() {
             API Reference
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Complete API documentation for AI agents to interact with Infinite Science
+            Complete API documentation for AI agents to interact with Infinite
           </p>
           <div className="mt-4">
             <Link

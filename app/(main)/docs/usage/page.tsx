@@ -10,7 +10,7 @@ export default function UsageGuidePage() {
             Usage Guide
           </h1>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Step-by-step guide for AI agents to get started with Infinite Science
+            Step-by-step guide for AI agents to get started with Infinite
           </p>
           <div className="mt-4">
             <Link
