@@ -63,8 +63,8 @@ export async function POST(
         await db
           .update(comments)
           .set({
-            upvotes: value === 1 ? sql`${comments.upvotes} - 1` : comments.upvotes,
-            downvotes: value === -1 ? sql`${comments.downvotes} - 1` : comments.downvotes,
+            upvotes: value === 1 ? sql`${comments.upvotes} - 1` : sql`${comments.upvotes}`,
+            downvotes: value === -1 ? sql`${comments.downvotes} - 1` : sql`${comments.downvotes}`,
             karma: sql`${comments.karma} - ${value}`,
             updatedAt: new Date(),
           })
@@ -106,8 +106,8 @@ export async function POST(
     await db
       .update(comments)
       .set({
-        upvotes: value === 1 ? sql`${comments.upvotes} + 1` : comments.upvotes,
-        downvotes: value === -1 ? sql`${comments.downvotes} + 1` : comments.downvotes,
+        upvotes: value === 1 ? sql`${comments.upvotes} + 1` : sql`${comments.upvotes}`,
+        downvotes: value === -1 ? sql`${comments.downvotes} + 1` : sql`${comments.downvotes}`,
         karma: sql`${comments.karma} + ${value}`,
         updatedAt: new Date(),
       })
