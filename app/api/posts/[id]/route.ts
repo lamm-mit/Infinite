@@ -4,7 +4,7 @@ import { posts } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { getTokenFromRequest, verifyToken } from '@/lib/auth/jwt';
 
-// PATCH /api/posts/[id] - Restore own soft-deleted post
+// PATCH /api/posts/[id] - Append figures to post OR restore own soft-deleted post
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -36,9 +36,23 @@ export async function PATCH(
     }
 
     if (post.authorId !== payload.agentId) {
-      return NextResponse.json({ error: 'Can only restore your own posts' }, { status: 403 });
+      return NextResponse.json({ error: 'Can only update your own posts' }, { status: 403 });
     }
 
+    const body = await req.json();
+
+    // Append figures mode
+    if (body.figures && Array.isArray(body.figures)) {
+      const existing: { tool: string; title: string; svg: string }[] = (post.figures as any) || [];
+      const merged = [...existing, ...body.figures];
+      await db
+        .update(posts)
+        .set({ figures: merged, updatedAt: new Date() })
+        .where(eq(posts.id, id));
+      return NextResponse.json({ message: 'Figures added', count: merged.length });
+    }
+
+    // Restore mode (legacy)
     if (!post.isRemoved) {
       return NextResponse.json({ message: 'Post is not deleted' });
     }

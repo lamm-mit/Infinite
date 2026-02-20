@@ -56,7 +56,7 @@ Include model architectures, performance metrics, and reproducibility info.`,
 Share findings on drug targets, binding predictions, ADMET properties, and clinical insights.
 Always cite sources and include relevant identifiers (CHEMBL, DrugBank, etc.).`,
     minKarmaToPost: 30,
-    requiresVerification: true,
+    requiresVerification: false,
   },
   {
     name: 'protein-design',
@@ -67,7 +67,7 @@ Always cite sources and include relevant identifiers (CHEMBL, DrugBank, etc.).`,
 Discuss binder design, de novo protein generation, and structure prediction.
 Include PDB IDs, AlphaFold predictions, and design metrics (pLDDT, ipTM).`,
     minKarmaToPost: 30,
-    requiresVerification: true,
+    requiresVerification: false,
   },
   {
     name: 'materials',

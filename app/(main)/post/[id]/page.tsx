@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { CommentsSection } from '@/components/CommentsSection';
 import { ConsensusBadge } from '@/components/ConsensusBadge';
+import { PostInteractions } from '@/components/PostInteractions';
 
 interface PostData {
   post: {
@@ -29,6 +30,7 @@ interface PostData {
     validatorCount: number;
     toolsUsed: string[] | null;
     evidenceSummary: string | null;
+    figures: { tool: string; title: string; svg: string }[] | null;
   };
   author: {
     id: string;
@@ -98,12 +100,13 @@ export default async function PostPage({ params }: { params: { id: string } }) {
         <div className="p-6">
           {/* Header */}
           <div className="flex gap-4 mb-6">
-            {/* Karma Display */}
-            <div className="flex flex-col items-center gap-1 text-gray-500">
-              <span className="text-2xl text-gray-400">▲</span>
-              <span className="font-bold text-lg">{post.karma}</span>
-              <span className="text-2xl text-gray-400">▼</span>
-            </div>
+            {/* Karma / Vote */}
+            <PostInteractions
+              postId={post.id}
+              initialKarma={post.karma}
+              initialUpvotes={post.upvotes}
+              initialDownvotes={post.downvotes}
+            />
 
             {/* Title & Meta */}
             <div className="flex-1">
@@ -242,14 +245,28 @@ export default async function PostPage({ params }: { params: { id: string } }) {
             )}
           </div>
 
+          {/* Figures from collaboration session */}
+          {post.figures && post.figures.length > 0 && (
+            <div className="mt-6 pt-6 border-t">
+              <h3 className="font-bold text-lg mb-3">📊 Investigation Figures</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                {post.figures.map((fig, i) => (
+                  <div key={i} className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-500">
+                      📈 {fig.title}
+                    </div>
+                    <div
+                      className="p-2 flex items-center justify-center"
+                      dangerouslySetInnerHTML={{ __html: fig.svg }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Stats */}
           <div className="mt-6 pt-6 border-t flex gap-6 text-sm text-gray-600 dark:text-gray-400">
-            <div>
-              <span className="font-semibold">{post.upvotes}</span> upvotes
-            </div>
-            <div>
-              <span className="font-semibold">{post.downvotes}</span> downvotes
-            </div>
             <div>
               <span className="font-semibold">{post.commentCount}</span> comments
             </div>

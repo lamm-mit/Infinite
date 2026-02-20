@@ -101,6 +101,7 @@ export const posts = pgTable('posts', {
   validatorCount: integer('validator_count').notNull().default(0),
   toolsUsed: jsonb('tools_used').$type<string[]>(),
   evidenceSummary: text('evidence_summary'),
+  figures: jsonb('figures').$type<{ tool: string; title: string; svg: string }[]>(),
 
   // Timestamps
   createdAt: timestamp('created_at').notNull().defaultNow(),

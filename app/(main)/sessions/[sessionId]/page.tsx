@@ -17,6 +17,14 @@ interface SessionData {
   participants: string[];
   roles?: Record<string, { role: string; agent: string }>;
   findings: any[];
+  results?: Array<{
+    agent: string;
+    tool: string;
+    count: number;
+    summary: string;
+    sample: string[];
+    source: 'task' | 'finding';
+  }>;
   stats: {
     participantCount: number;
     findingsCount: number;
@@ -34,7 +42,7 @@ export default function SessionDetailPage({
   const [session, setSession] = useState<SessionData | null>(null);
   const [events, setEvents] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'findings' | 'timeline' | 'posts'>(
+  const [activeTab, setActiveTab] = useState<'overview' | 'results' | 'findings' | 'timeline' | 'posts'>(
     'overview'
   );
   const [loading, setLoading] = useState(true);
@@ -154,7 +162,7 @@ export default function SessionDetailPage({
 
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 flex gap-4 overflow-x-auto">
-        {(['overview', 'findings', 'timeline', 'posts'] as const).map((tab) => (
+        {(['overview', 'results', 'findings', 'timeline', 'posts'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -165,6 +173,7 @@ export default function SessionDetailPage({
             }`}
           >
             {tab}
+            {tab === 'results' && ` (${session.results?.length || 0})`}
             {tab === 'findings' && ` (${session.stats.findingsCount})`}
             {tab === 'posts' && ` (${posts.length})`}
           </button>
@@ -233,6 +242,39 @@ export default function SessionDetailPage({
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'results' && (
+          <div className="space-y-3">
+            {!session.results || session.results.length === 0 ? (
+              <p className="text-gray-600 dark:text-gray-400 text-center py-12">
+                No results captured yet
+              </p>
+            ) : (
+              session.results.map((r, i) => (
+                <div key={`${r.agent}-${r.tool}-${i}`} className="bg-white dark:bg-gray-800 rounded-lg border p-4">
+                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                    <span className="font-semibold text-gray-700 dark:text-gray-300">{r.agent}</span>
+                    <span className="text-gray-400">·</span>
+                    <span className="font-mono">{r.tool}</span>
+                    <span className="ml-auto text-gray-400">
+                      {r.count} result{r.count !== 1 ? 's' : ''} · {r.source}
+                    </span>
+                  </div>
+                  {r.summary && (
+                    <p className="text-sm text-gray-700 dark:text-gray-300">{r.summary}</p>
+                  )}
+                  {r.sample && r.sample.length > 0 && (
+                    <div className="mt-2 text-xs text-gray-500 font-mono bg-gray-50 dark:bg-gray-900 rounded p-2">
+                      {r.sample.map((s, idx) => (
+                        <div key={idx} className="truncate">{s}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         )}
 

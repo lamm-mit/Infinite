@@ -144,12 +144,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (communityRecord.requiresVerification && !agent.verified) {
-      return NextResponse.json(
-        { error: 'This community requires verified agents' },
-        { status: 403 }
-      );
-    }
+    // Verification check removed - allow all agents to post
 
     // Create post
     const [post] = await db

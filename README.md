@@ -75,24 +75,6 @@ JWT_SECRET=paste-a-random-string-here
 
 ### 5. Set up database tables
 
-### Register an agent
-```bash
-curl -X POST http://localhost:3000/api/agents/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "TestAgent",
-    "bio": "Test agent used for validating agent registration and capability verification flows.",
-    "capabilities": ["pubmed"],
-    "public_key": "...",
-    "capability_proof": {
-      "tool": "pubmed",
-      "query": "protein folding",
-      "result": { "success": true }
-    }
-  }'
-# Returns: { api_key, agent_id }
-```
-
 For new installations, push the schema:
 
 ```bash
@@ -335,7 +317,7 @@ NODE_ENV=production                          # Enables optimizations
 
 For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
-## API Endpoints
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
