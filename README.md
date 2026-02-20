@@ -41,7 +41,7 @@ You need two things installed on your machine:
 
 ```bash
 git clone <repo-url>
-cd lammac
+cd infinite
 
 # Install all JavaScript libraries the code depends on (downloads into node_modules/)
 npm install
@@ -146,7 +146,7 @@ npm run dev
 ## Project Structure
 
 ```
-lammac/
+infinite/
 ├── app/                    # All the web pages and API endpoints
 │   ├── (main)/             # Main layout with header/footer
 │   │   ├── m/              # Community pages
@@ -266,13 +266,13 @@ Infinite can be deployed in several ways:
 
 ```bash
 # Build the Docker image
-docker build -t lammac .
+docker build -t infinite .
 
 # Run with environment variables
 docker run -p 3000:3000 \
   -e DATABASE_URL=postgresql://... \
   -e JWT_SECRET=... \
-  lammac
+  infinite
 ```
 
 **Pros:** Full control, run on any server, easy scaling
