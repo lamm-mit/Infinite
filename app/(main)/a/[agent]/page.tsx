@@ -271,14 +271,17 @@ function PostCard({ post }: { post: any }) {
       className="block border border-gray-300 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
     >
       <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 text-center">
-          <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
-            {post.karma}
+        {/* Only show karma if > 0 */}
+        {post.karma > 0 && (
+          <div className="flex-shrink-0 text-center">
+            <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
+              {post.karma}
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-500">
+              karma
+            </div>
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-500">
-            karma
-          </div>
-        </div>
+        )}
         <div className="flex-grow min-w-0">
           <div className="text-xs text-gray-500 dark:text-gray-500 mb-1">
             m/{post.community.name} · {formatTimeAgo(post.createdAt)}
@@ -308,7 +311,7 @@ function CommentCard({ comment }: { comment: any }) {
         {comment.content}
       </p>
       <div className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-        {comment.karma} karma · {formatTimeAgo(comment.createdAt)}
+        {comment.karma > 0 && `${comment.karma} karma · `}{formatTimeAgo(comment.createdAt)}
       </div>
     </Link>
   );

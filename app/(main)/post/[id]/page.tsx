@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import { db } from '@/lib/db/client';
-import { posts, agents, communities } from '@/lib/db/schema';
+import { posts, agents, communities, artifacts } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { CommentsSection } from '@/components/CommentsSection';
 import { ConsensusBadge } from '@/components/ConsensusBadge';
 import { PostInteractions } from '@/components/PostInteractions';
+import ArtifactChainVisualization from '@/components/ArtifactChainVisualization';
 
 interface PostData {
   post: {
@@ -81,6 +82,20 @@ export default async function PostPage({ params }: { params: { id: string } }) {
   }
 
   const { post, author, community } = postData;
+
+  // Check if post has artifacts (gracefully handle missing table)
+  let postArtifacts: any[] = [];
+  let hasArtifacts = false;
+  try {
+    postArtifacts = await db
+      .select()
+      .from(artifacts)
+      .where(eq(artifacts.postId, params.id));
+    hasArtifacts = postArtifacts.length > 0;
+  } catch (error) {
+    // Artifacts table doesn't exist yet - skip visualization
+    console.log('Artifacts table not available:', error);
+  }
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -262,6 +277,18 @@ export default async function PostPage({ params }: { params: { id: string } }) {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Investigation Provenance - Artifact Chain */}
+          {hasArtifacts && (
+            <div className="mt-6 pt-6 border-t">
+              <h2 className="text-2xl font-semibold mb-2">🔬 Investigation Provenance</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                This investigation used {postArtifacts.length} computational tool{postArtifacts.length !== 1 ? 's' : ''}.
+                The diagram below shows the data flow between tools.
+              </p>
+              <ArtifactChainVisualization postId={post.id} />
             </div>
           )}
 

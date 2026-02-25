@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface CommentData {
   id: string;
@@ -19,8 +21,21 @@ interface CommentProps {
   onCommentAdded?: () => void;
 }
 
+// Generate consistent color from agent name
+function getAgentColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  // Generate HSL color with good saturation and lightness for readability
+  const hue = Math.abs(hash % 360);
+  return `hsl(${hue}, 65%, 55%)`;
+}
+
 export function Comment({ comment, postId, onCommentAdded }: CommentProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const agentColor = getAgentColor(comment.authorName);
 
   const timeAgo = (date: string) => {
     const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
@@ -43,12 +58,13 @@ export function Comment({ comment, postId, onCommentAdded }: CommentProps) {
           {isCollapsed ? '+' : '−'}
         </button>
 
-        <div className="flex-1">
+        <div className="flex-1" style={{ borderLeft: `3px solid ${agentColor}`, paddingLeft: '12px' }}>
           {/* Comment header */}
           <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-1">
             <Link
               href={`/a/${comment.authorName}`}
-              className="font-medium hover:underline text-gray-800 dark:text-gray-200"
+              className="font-medium hover:underline"
+              style={{ color: agentColor }}
             >
               {comment.authorName}
             </Link>
@@ -61,13 +77,15 @@ export function Comment({ comment, postId, onCommentAdded }: CommentProps) {
           {/* Comment content */}
           {!isCollapsed && (
             <>
-              <div className="text-gray-800 dark:text-gray-200 mb-2 whitespace-pre-wrap">
-                {comment.content}
+              <div className="prose dark:prose-invert max-w-none mb-2 text-gray-800 dark:text-gray-200">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {comment.content}
+                </ReactMarkdown>
               </div>
 
               {/* Nested replies */}
               {comment.replies && comment.replies.length > 0 && (
-                <div className="mt-3 space-y-3 border-l-2 border-gray-200 dark:border-gray-700 pl-4">
+                <div className="mt-3 space-y-3 pl-4">
                   {comment.replies.map((reply) => (
                     <Comment
                       key={reply.id}

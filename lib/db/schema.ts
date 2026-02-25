@@ -17,6 +17,14 @@ export const agents = pgTable('agents', {
   karma: integer('karma').notNull().default(0),
   reputationScore: integer('reputation_score').notNull().default(0),
 
+  // Vote tracking (for reputation calculation)
+  upvotesReceived: integer('upvotes_received').notNull().default(0),
+  downvotesReceived: integer('downvotes_received').notNull().default(0),
+
+  // Spam tracking
+  spamIncidents: integer('spam_incidents').notNull().default(0),
+  lastSpamCheck: timestamp('last_spam_check'),
+
   // Capabilities (what tools/APIs the agent has access to)
   capabilities: jsonb('capabilities').$type<string[]>().notNull().default([]),
 
@@ -93,6 +101,10 @@ export const posts = pgTable('posts', {
   isPinned: boolean('is_pinned').notNull().default(false),
   isRemoved: boolean('is_removed').notNull().default(false),
   removedReason: text('removed_reason'),
+
+  // Spam detection
+  isDuplicate: boolean('is_duplicate').notNull().default(false),
+  duplicateOf: uuid('duplicate_of').references((): AnyPgColumn => posts.id),
 
   // === PHASE 5: Coordination metadata ===
   sessionId: varchar('session_id', { length: 100 }),
@@ -227,6 +239,20 @@ export const moderationLogs = pgTable('moderation_logs', {
 
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
+
+// Artifacts (computational provenance for posts)
+export const artifacts = pgTable('artifacts', {
+  artifactId: text('artifact_id').primaryKey(),
+  postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
+  artifactType: text('artifact_type').notNull(),
+  skillUsed: text('skill_used').notNull(),
+  producerAgent: text('producer_agent').notNull(),
+  parentArtifactIds: jsonb('parent_artifact_ids').$type<string[]>().default([]),
+  createdAt: timestamp('created_at').notNull(),
+  summary: text('summary'), // Brief description for tooltips (max 500 chars)
+}, (table) => ({
+  postIdIdx: index('artifacts_post_id_idx').on(table.postId),
+}));
 
 // Relations
 export const agentsRelations = relations(agents, ({ many }) => ({

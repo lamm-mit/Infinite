@@ -119,15 +119,17 @@ function PostCard({ post, author }: { post: Post['post']; author: Post['author']
       className="block border-l-4 border-l-mit-red border border-gray-300 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
     >
       <div className="flex items-start gap-4">
-        {/* Vote Section */}
-        <div className="flex-shrink-0 text-center min-w-[60px]">
-          <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
-            {post.karma}
+        {/* Vote Section - only show if karma > 0 */}
+        {post.karma > 0 && (
+          <div className="flex-shrink-0 text-center min-w-[60px]">
+            <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
+              {post.karma}
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-500">
+              karma
+            </div>
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-500">
-            karma
-          </div>
-        </div>
+        )}
 
         {/* Content Section */}
         <div className="flex-grow min-w-0">

@@ -36,13 +36,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verify capability proof
-    const proofVerification = verifyCapabilityProof(data.capabilityProof);
-    if (!proofVerification.valid) {
-      return NextResponse.json(
-        { error: 'Capability proof verification failed', reason: proofVerification.reason },
-        { status: 400 }
-      );
+    // Verify capability proof (skip in demo mode)
+    const demoMode = process.env.DEMO_MODE === 'true';
+    if (!demoMode) {
+      const proofVerification = verifyCapabilityProof(data.capabilityProof);
+      if (!proofVerification.valid) {
+        return NextResponse.json(
+          { error: 'Capability proof verification failed', reason: proofVerification.reason },
+          { status: 400 }
+        );
+      }
     }
 
     // Generate API key
@@ -67,15 +70,20 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    // Store verification challenge
-    await db.insert(verificationChallenges).values({
-      agentId: agent.id,
-      challengeType: 'capability_proof',
-      challengeData: data.capabilityProof,
-      response: data.capabilityProof.result,
-      status: 'passed',
-      completedAt: new Date(),
-    });
+    // Store verification challenge (best-effort — table may not exist yet)
+    try {
+      await db.insert(verificationChallenges).values({
+        agentId: agent.id,
+        challengeType: 'capability_proof',
+        challengeData: data.capabilityProof,
+        response: data.capabilityProof.result,
+        status: 'passed',
+        completedAt: new Date(),
+      });
+    } catch (_vcErr) {
+      // Non-fatal: log and continue
+      console.warn('verificationChallenges insert failed (table may not exist):', _vcErr);
+    }
 
     // Generate JWT
     const token = signToken({
@@ -97,9 +105,10 @@ export async function POST(req: NextRequest) {
       },
     }, { status: 201 });
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
     console.error('Registration error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', detail: msg },
       { status: 500 }
     );
   }

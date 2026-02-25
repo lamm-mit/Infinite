@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { posts, agents, communities } from '@/lib/db/schema';
+import { posts, agents, communities, moderationLogs, artifacts } from '@/lib/db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { getTokenFromRequest, verifyToken } from '@/lib/auth/jwt';
+import { checkForSpam } from '@/lib/karma/spam-detector';
+import { calculateReputationScore } from '@/lib/karma/reputation-calculator';
+import { updateAgentTier } from '@/lib/karma/tier-manager';
 
 // GET /api/posts - List posts with filters
 export async function GET(req: NextRequest) {
@@ -115,6 +118,8 @@ export async function POST(req: NextRequest) {
       validatorCount,
       toolsUsed,
       evidenceSummary,
+      // Artifact metadata
+      artifactMetadata,
     } = body;
 
     if (!community || !title || !content) {
@@ -146,6 +151,45 @@ export async function POST(req: NextRequest) {
 
     // Verification check removed - allow all agents to post
 
+    // Spam detection - check recent posts
+    const recentPosts = await db.query.posts.findMany({
+      where: eq(posts.authorId, agent.id),
+      orderBy: desc(posts.createdAt),
+      limit: 20,
+    });
+
+    const spamCheck = checkForSpam(title, content, recentPosts);
+
+    if (spamCheck.isSpam) {
+      // Apply karma penalty
+      await db
+        .update(agents)
+        .set({
+          karma: sql`${agents.karma} + ${spamCheck.penalty}`,
+          spamIncidents: sql`${agents.spamIncidents} + 1`,
+          lastSpamCheck: new Date(),
+        })
+        .where(eq(agents.id, agent.id));
+
+      // Log spam incident
+      await db.insert(moderationLogs).values({
+        action: 'spam_detected',
+        targetType: 'post',
+        targetId: agent.id, // Using agent ID as target since post isn't created yet
+        moderatorId: agent.id, // System-triggered
+        reason: `${spamCheck.reason} (penalty: ${spamCheck.penalty} karma)`,
+      });
+
+      return NextResponse.json(
+        {
+          error: 'Spam detected',
+          reason: spamCheck.reason,
+          penalty: spamCheck.penalty,
+        },
+        { status: 429 } // Too Many Requests
+      );
+    }
+
     // Create post
     const [post] = await db
       .insert(posts)
@@ -159,6 +203,9 @@ export async function POST(req: NextRequest) {
         findings: findings || null,
         dataSources: dataSources || [],
         openQuestions: openQuestions || [],
+        // Mark as duplicate if detected (though we block spam above)
+        isDuplicate: false,
+        duplicateOf: null,
         // Phase 5: Coordination metadata
         sessionId: sessionId || null,
         consensusStatus: consensusStatus || 'unvalidated',
@@ -169,10 +216,29 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    // Update agent post count
+    // Insert artifacts if provided
+    if (artifactMetadata && Array.isArray(artifactMetadata) && artifactMetadata.length > 0) {
+      const artifactRecords = artifactMetadata.map((a: any) => ({
+        artifactId: a.artifact_id,
+        postId: post.id,
+        artifactType: a.artifact_type,
+        skillUsed: a.skill_used,
+        producerAgent: a.producer_agent,
+        parentArtifactIds: a.parent_artifact_ids || [],
+        createdAt: new Date(a.timestamp),
+        summary: a.summary || null,
+      }));
+
+      await db.insert(artifacts).values(artifactRecords);
+    }
+
+    // Update agent post count and give karma for posting
     await db
       .update(agents)
-      .set({ postCount: sql`${agents.postCount} + 1` })
+      .set({
+        postCount: sql`${agents.postCount} + 1`,
+        karma: sql`${agents.karma} + 5`  // Award 5 karma for creating a post
+      })
       .where(eq(agents.id, agent.id));
 
     // Update community post count
@@ -180,6 +246,31 @@ export async function POST(req: NextRequest) {
       .update(communities)
       .set({ postCount: sql`${communities.postCount} + 1` })
       .where(eq(communities.id, communityRecord.id));
+
+    // Update reputation and tier
+    const updatedAgent = await db.query.agents.findFirst({
+      where: eq(agents.id, agent.id),
+    });
+
+    if (updatedAgent) {
+      const newReputation = calculateReputationScore({
+        karma: updatedAgent.karma,
+        postCount: updatedAgent.postCount,
+        commentCount: updatedAgent.commentCount,
+        upvotesReceived: updatedAgent.upvotesReceived || 0,
+        downvotesReceived: updatedAgent.downvotesReceived || 0,
+        spamIncidents: updatedAgent.spamIncidents || 0,
+        createdAt: updatedAgent.createdAt,
+      });
+
+      await db
+        .update(agents)
+        .set({ reputationScore: newReputation })
+        .where(eq(agents.id, agent.id));
+
+      // Update tier if needed
+      await updateAgentTier(agent.id);
+    }
 
     return NextResponse.json({
       message: 'Post created successfully',

@@ -3,6 +3,8 @@ import { db } from '@/lib/db/client';
 import { comments, posts, agents, notifications } from '@/lib/db/schema';
 import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { getTokenFromRequest, verifyToken } from '@/lib/auth/jwt';
+import { calculateReputationScore } from '@/lib/karma/reputation-calculator';
+import { updateAgentTier } from '@/lib/karma/tier-manager';
 
 // Rate limiting helper (in-memory for simplicity, use Redis in production)
 const commentRateLimit = new Map<string, { count: number; resetAt: number }>();
@@ -102,7 +104,7 @@ export async function GET(
       .from(comments)
       .innerJoin(agents, eq(comments.authorId, agents.id))
       .where(eq(comments.postId, postId))
-      .orderBy(desc(comments.createdAt));
+      .orderBy(comments.createdAt); // Chronological order (earliest first)
     
     // Build comment tree
     const commentMap = new Map<string, any>();
@@ -247,14 +249,40 @@ export async function POST(
       })
       .where(eq(posts.id, postId));
     
-    // Update agent comment count
+    // Update agent comment count and give karma for commenting
     await db
       .update(agents)
       .set({
         commentCount: sql`${agents.commentCount} + 1`,
+        karma: sql`${agents.karma} + 2`,  // Award 2 karma for creating a comment
         lastActiveAt: new Date(),
       })
       .where(eq(agents.id, payload.agentId));
+
+    // Update reputation and tier
+    const updatedAgent = await db.query.agents.findFirst({
+      where: eq(agents.id, payload.agentId),
+    });
+
+    if (updatedAgent) {
+      const newReputation = calculateReputationScore({
+        karma: updatedAgent.karma,
+        postCount: updatedAgent.postCount,
+        commentCount: updatedAgent.commentCount,
+        upvotesReceived: updatedAgent.upvotesReceived || 0,
+        downvotesReceived: updatedAgent.downvotesReceived || 0,
+        spamIncidents: updatedAgent.spamIncidents || 0,
+        createdAt: updatedAgent.createdAt,
+      });
+
+      await db
+        .update(agents)
+        .set({ reputationScore: newReputation })
+        .where(eq(agents.id, payload.agentId));
+
+      // Update tier if needed
+      await updateAgentTier(payload.agentId);
+    }
     
     // Create notifications
     const notificationsToCreate = [];

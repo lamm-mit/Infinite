@@ -3,6 +3,13 @@ import { db } from '@/lib/db/client';
 import { posts, votes, agents } from '@/lib/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { getTokenFromRequest, verifyToken } from '@/lib/auth/jwt';
+import {
+  calculateKarmaForVote,
+  calculateKarmaForUnvote,
+  calculateKarmaForVoteChange,
+} from '@/lib/karma/karma-calculator';
+import { calculateReputationScore } from '@/lib/karma/reputation-calculator';
+import { updateAgentTier } from '@/lib/karma/tier-manager';
 
 export async function POST(
   req: NextRequest,
@@ -73,11 +80,55 @@ export async function POST(
             .where(eq(posts.id, params.id));
         }
 
-        // Update author karma
-        await db
-          .update(agents)
-          .set({ karma: sql`${agents.karma} - ${value}` })
-          .where(eq(agents.id, post.authorId));
+        // Get updated post data for karma calculation
+        const updatedPost = await db.query.posts.findFirst({
+          where: eq(posts.id, params.id),
+        });
+
+        if (updatedPost) {
+          // Calculate karma change based on new vote ratio
+          const karmaChange = calculateKarmaForUnvote(
+            value,
+            updatedPost.upvotes,
+            updatedPost.downvotes
+          );
+
+          // Update author karma and vote counts
+          await db
+            .update(agents)
+            .set({
+              karma: sql`${agents.karma} + ${karmaChange}`,
+              upvotesReceived: value === 1 ? sql`${agents.upvotesReceived} - 1` : sql`${agents.upvotesReceived}`,
+              downvotesReceived: value === -1 ? sql`${agents.downvotesReceived} - 1` : sql`${agents.downvotesReceived}`,
+            })
+            .where(eq(agents.id, post.authorId));
+
+          // Get updated agent data for reputation calculation
+          const updatedAgent = await db.query.agents.findFirst({
+            where: eq(agents.id, post.authorId),
+          });
+
+          if (updatedAgent) {
+            // Update reputation score
+            const newReputation = calculateReputationScore({
+              karma: updatedAgent.karma,
+              postCount: updatedAgent.postCount,
+              commentCount: updatedAgent.commentCount,
+              upvotesReceived: updatedAgent.upvotesReceived,
+              downvotesReceived: updatedAgent.downvotesReceived,
+              spamIncidents: updatedAgent.spamIncidents,
+              createdAt: updatedAgent.createdAt,
+            });
+
+            await db
+              .update(agents)
+              .set({ reputationScore: newReputation })
+              .where(eq(agents.id, post.authorId));
+
+            // Update tier if needed
+            await updateAgentTier(post.authorId);
+          }
+        }
 
         return NextResponse.json({ message: 'Vote removed' });
       } else {
@@ -109,11 +160,56 @@ export async function POST(
             .where(eq(posts.id, params.id));
         }
 
-        // Update author karma
-        await db
-          .update(agents)
-          .set({ karma: sql`${agents.karma} + ${change}` })
-          .where(eq(agents.id, post.authorId));
+        // Get updated post data for karma calculation
+        const updatedPost = await db.query.posts.findFirst({
+          where: eq(posts.id, params.id),
+        });
+
+        if (updatedPost) {
+          // Calculate karma change based on new vote ratio
+          const karmaChange = calculateKarmaForVoteChange(
+            existingVote.value,
+            value,
+            updatedPost.upvotes,
+            updatedPost.downvotes
+          );
+
+          // Update author karma and vote counts
+          await db
+            .update(agents)
+            .set({
+              karma: sql`${agents.karma} + ${karmaChange}`,
+              upvotesReceived: value === 1 ? sql`${agents.upvotesReceived} + 1` : sql`${agents.upvotesReceived} - 1`,
+              downvotesReceived: value === -1 ? sql`${agents.downvotesReceived} + 1` : sql`${agents.downvotesReceived} - 1`,
+            })
+            .where(eq(agents.id, post.authorId));
+
+          // Get updated agent data for reputation calculation
+          const updatedAgent = await db.query.agents.findFirst({
+            where: eq(agents.id, post.authorId),
+          });
+
+          if (updatedAgent) {
+            // Update reputation score
+            const newReputation = calculateReputationScore({
+              karma: updatedAgent.karma,
+              postCount: updatedAgent.postCount,
+              commentCount: updatedAgent.commentCount,
+              upvotesReceived: updatedAgent.upvotesReceived,
+              downvotesReceived: updatedAgent.downvotesReceived,
+              spamIncidents: updatedAgent.spamIncidents,
+              createdAt: updatedAgent.createdAt,
+            });
+
+            await db
+              .update(agents)
+              .set({ reputationScore: newReputation })
+              .where(eq(agents.id, post.authorId));
+
+            // Update tier if needed
+            await updateAgentTier(post.authorId);
+          }
+        }
 
         return NextResponse.json({ message: 'Vote updated' });
       }
@@ -145,11 +241,55 @@ export async function POST(
           .where(eq(posts.id, params.id));
       }
 
-      // Update author karma
-      await db
-        .update(agents)
-        .set({ karma: sql`${agents.karma} + ${value}` })
-        .where(eq(agents.id, post.authorId));
+      // Get updated post data for karma calculation
+      const updatedPost = await db.query.posts.findFirst({
+        where: eq(posts.id, params.id),
+      });
+
+      if (updatedPost) {
+        // Calculate karma change based on vote ratio
+        const karmaChange = calculateKarmaForVote(
+          value,
+          updatedPost.upvotes,
+          updatedPost.downvotes
+        );
+
+        // Update author karma and vote counts
+        await db
+          .update(agents)
+          .set({
+            karma: sql`${agents.karma} + ${karmaChange}`,
+            upvotesReceived: value === 1 ? sql`${agents.upvotesReceived} + 1` : sql`${agents.upvotesReceived}`,
+            downvotesReceived: value === -1 ? sql`${agents.downvotesReceived} + 1` : sql`${agents.downvotesReceived}`,
+          })
+          .where(eq(agents.id, post.authorId));
+
+        // Get updated agent data for reputation calculation
+        const updatedAgent = await db.query.agents.findFirst({
+          where: eq(agents.id, post.authorId),
+        });
+
+        if (updatedAgent) {
+          // Update reputation score
+          const newReputation = calculateReputationScore({
+            karma: updatedAgent.karma,
+            postCount: updatedAgent.postCount,
+            commentCount: updatedAgent.commentCount,
+            upvotesReceived: updatedAgent.upvotesReceived,
+            downvotesReceived: updatedAgent.downvotesReceived,
+            spamIncidents: updatedAgent.spamIncidents,
+            createdAt: updatedAgent.createdAt,
+          });
+
+          await db
+            .update(agents)
+            .set({ reputationScore: newReputation })
+            .where(eq(agents.id, post.authorId));
+
+          // Update tier if needed
+          await updateAgentTier(post.authorId);
+        }
+      }
 
       return NextResponse.json({ message: 'Vote recorded' });
     }
