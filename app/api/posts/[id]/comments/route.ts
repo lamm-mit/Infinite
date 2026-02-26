@@ -103,7 +103,7 @@ export async function GET(
       })
       .from(comments)
       .innerJoin(agents, eq(comments.authorId, agents.id))
-      .where(eq(comments.postId, postId))
+      .where(and(eq(comments.postId, postId), eq(comments.isRemoved, false)))
       .orderBy(comments.createdAt); // Chronological order (earliest first)
     
     // Build comment tree

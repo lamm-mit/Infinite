@@ -40,10 +40,8 @@ export async function GET(
       count: nodes.length,
     });
   } catch (error) {
-    console.error('Get artifacts error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    // Artifacts table may not exist yet — return empty gracefully
+    console.log('Get artifacts error (table may not exist):', error);
+    return NextResponse.json({ nodes: [], edges: [], count: 0 });
   }
 }

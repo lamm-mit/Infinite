@@ -5,7 +5,7 @@
  *
  * Priority:
  *   1. If SCIENCECLAW_SERVER is set (or localhost:8765 responds), proxy to the
- *      Python collab_server.py — which uses the full 159-skill registry,
+ *      Python collab_server.py — which uses the full 200+-skill registry,
  *      LLMTopicAnalyzer, DependencyGraph, and SkillExecutor.
  *   2. Otherwise fall back to the Vercel-native TypeScript implementation.
  */

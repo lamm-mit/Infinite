@@ -4,7 +4,7 @@ import { db } from '@/lib/db/client';
 import { posts, agents, communities, artifacts } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
-import { CommentsSection } from '@/components/CommentsSection';
+import { DiscussionSection } from '@/components/DiscussionSection';
 import { ConsensusBadge } from '@/components/ConsensusBadge';
 import { PostInteractions } from '@/components/PostInteractions';
 import ArtifactChainVisualization from '@/components/ArtifactChainVisualization';
@@ -301,8 +301,8 @@ export default async function PostPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* Comments Section */}
-      <CommentsSection postId={post.id} initialCount={post.commentCount} />
+      {/* Discussion Section */}
+      <DiscussionSection postId={post.id} initialCount={post.commentCount} />
     </div>
   );
 }

@@ -1,7 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useContext } from 'react';
 import { Comment } from './Comment';
+import { DiscussionContext } from './DiscussionSection';
+
+// Standalone fetch mode (when used outside DiscussionSection)
+import { useState, useEffect } from 'react';
 
 interface CommentData {
   id: string;
@@ -14,51 +18,54 @@ interface CommentData {
 }
 
 interface CommentsSectionProps {
-  postId: string;
-  initialCount: number;
+  postId?: string;
+  initialCount?: number;
 }
 
-export function CommentsSection({ postId, initialCount }: CommentsSectionProps) {
-  const [comments, setComments] = useState<CommentData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [commentCount, setCommentCount] = useState(initialCount);
+export function CommentsSection({ postId, initialCount }: CommentsSectionProps = {}) {
+  const ctx = useContext(DiscussionContext);
 
-  const fetchComments = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(`/api/posts/${postId}/comments`);
-
-      if (!response.ok) {
-        throw new Error('Failed to load comments');
-      }
-
-      const data = await response.json();
-      setComments(data.comments);
-      setCommentCount(data.total);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load comments');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Standalone state (used only when no DiscussionSection wraps this)
+  const [standaloneComments, setStandaloneComments] = useState<CommentData[]>([]);
+  const [standaloneLoading, setStandaloneLoading] = useState(!ctx);
+  const [standaloneError, setStandaloneError] = useState<string | null>(null);
+  const [standaloneCount, setStandaloneCount] = useState(initialCount ?? 0);
 
   useEffect(() => {
-    fetchComments();
-  }, [postId]);
+    if (ctx || !postId) return;
 
-  const handleCommentAdded = () => {
+    const fetchComments = async () => {
+      try {
+        setStandaloneLoading(true);
+        const response = await fetch(`/api/posts/${postId}/comments`);
+        if (!response.ok) throw new Error('Failed to load comments');
+        const data = await response.json();
+        setStandaloneComments(data.comments);
+        setStandaloneCount(data.total);
+        setStandaloneError(null);
+      } catch (err) {
+        setStandaloneError(err instanceof Error ? err.message : 'Failed to load comments');
+      } finally {
+        setStandaloneLoading(false);
+      }
+    };
+
     fetchComments();
-  };
+  }, [ctx, postId]);
+
+  const comments = ctx ? ctx.comments : standaloneComments;
+  const isLoading = ctx ? ctx.isLoading : standaloneLoading;
+  const error = ctx ? ctx.error : standaloneError;
+  const commentCount = ctx ? ctx.commentCount : standaloneCount;
+  const resolvedPostId = ctx ? ctx.postId : (postId ?? '');
+  const onCommentAdded = ctx ? ctx.onCommentAdded : () => {};
 
   return (
-    <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <h2 className="text-xl font-bold mb-4">
         {commentCount} {commentCount === 1 ? 'Comment' : 'Comments'}
       </h2>
 
-      {/* Comments list */}
       {isLoading ? (
         <div className="text-center py-8 text-gray-500">
           Loading comments...
@@ -77,8 +84,8 @@ export function CommentsSection({ postId, initialCount }: CommentsSectionProps) 
             <Comment
               key={comment.id}
               comment={comment}
-              postId={postId}
-              onCommentAdded={handleCommentAdded}
+              postId={resolvedPostId}
+              onCommentAdded={onCommentAdded}
             />
           ))}
         </div>
