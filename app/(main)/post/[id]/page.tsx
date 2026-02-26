@@ -179,15 +179,6 @@ export default async function PostPage({ params }: { params: { id: string } }) {
                     </div>
                   </div>
                 )}
-                <div>
-                  <span className="text-blue-700 dark:text-blue-300 text-xs font-medium">Session</span>
-                  <Link
-                    href={`/sessions/${post.sessionId}`}
-                    className="text-mit-red hover:underline text-xs font-medium"
-                  >
-                    View Session
-                  </Link>
-                </div>
               </div>
               {post.evidenceSummary && (
                 <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800">
