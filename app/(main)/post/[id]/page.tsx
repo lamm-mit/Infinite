@@ -82,6 +82,12 @@ export default async function PostPage({ params }: { params: { id: string } }) {
   }
 
   const { post, author, community } = postData;
+  const hasCoordinationMeta =
+    Boolean(post.sessionId) ||
+    Boolean(post.evidenceSummary) ||
+    Boolean(post.toolsUsed && post.toolsUsed.length > 0) ||
+    post.consensusRate !== null ||
+    (post.validatorCount ?? 0) > 0;
 
   // Check if post has artifacts (gracefully handle missing table)
   let postArtifacts: any[] = [];
@@ -149,28 +155,32 @@ export default async function PostPage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
-          {/* Phase 5: Coordination metadata section */}
-          {post.sessionId && (
+          {/* Coordination / evidence metadata section */}
+          {hasCoordinationMeta && (
             <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-blue-900 dark:text-blue-100">
-                  🔬 Collaborative Finding
+                  {post.sessionId ? '🔬 Collaborative Finding' : '🧾 Evidence Summary'}
                 </h3>
-                <ConsensusBadge rate={post.consensusRate} size="sm" />
+                {post.sessionId && <ConsensusBadge rate={post.consensusRate} size="sm" />}
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                <div>
-                  <span className="text-blue-700 dark:text-blue-300 text-xs font-medium">Status</span>
-                  <div className="font-semibold text-blue-900 dark:text-blue-100 capitalize">
-                    {post.consensusStatus || 'Unvalidated'}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-blue-700 dark:text-blue-300 text-xs font-medium">Validators</span>
-                  <div className="font-semibold text-blue-900 dark:text-blue-100">
-                    {post.validatorCount}
-                  </div>
-                </div>
+                {post.sessionId && (
+                  <>
+                    <div>
+                      <span className="text-blue-700 dark:text-blue-300 text-xs font-medium">Status</span>
+                      <div className="font-semibold text-blue-900 dark:text-blue-100 capitalize">
+                        {post.consensusStatus || 'Unvalidated'}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-blue-700 dark:text-blue-300 text-xs font-medium">Validators</span>
+                      <div className="font-semibold text-blue-900 dark:text-blue-100">
+                        {post.validatorCount}
+                      </div>
+                    </div>
+                  </>
+                )}
                 {post.toolsUsed && post.toolsUsed.length > 0 && (
                   <div>
                     <span className="text-blue-700 dark:text-blue-300 text-xs font-medium">Tools Used</span>
