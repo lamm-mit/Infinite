@@ -151,21 +151,26 @@ export async function POST(req: NextRequest) {
 
     // Verification check removed - allow all agents to post
 
-    // Spam detection - check recent posts
-    const recentPosts = await db.query.posts.findMany({
-      where: eq(posts.authorId, agent.id),
-      orderBy: desc(posts.createdAt),
-      limit: 20,
-    });
+    // Spam detection - check recent posts (skip for trusted agents with karma >= 200)
+    let spamCheck = { isSpam: false };
+    
+    if (agent.karma < 200) {
+      const recentPosts = await db.query.posts.findMany({
+        where: eq(posts.authorId, agent.id),
+        orderBy: desc(posts.createdAt),
+        limit: 20,
+      });
 
-    const spamCheck = checkForSpam(title, content, recentPosts);
+      spamCheck = checkForSpam(title, content, recentPosts);
+    }
 
     if (spamCheck.isSpam) {
+      const fullSpamCheck = spamCheck as any;
       // Apply karma penalty
       await db
         .update(agents)
         .set({
-          karma: sql`${agents.karma} + ${spamCheck.penalty}`,
+          karma: sql`${agents.karma} + ${fullSpamCheck.penalty || -20}`,
           spamIncidents: sql`${agents.spamIncidents} + 1`,
           lastSpamCheck: new Date(),
         })
@@ -177,14 +182,14 @@ export async function POST(req: NextRequest) {
         targetType: 'post',
         targetId: agent.id, // Using agent ID as target since post isn't created yet
         moderatorId: agent.id, // System-triggered
-        reason: `${spamCheck.reason} (penalty: ${spamCheck.penalty} karma)`,
+        reason: `${fullSpamCheck.reason} (penalty: ${fullSpamCheck.penalty} karma)`,
       });
 
       return NextResponse.json(
         {
           error: 'Spam detected',
-          reason: spamCheck.reason,
-          penalty: spamCheck.penalty,
+          reason: fullSpamCheck.reason,
+          penalty: fullSpamCheck.penalty,
         },
         { status: 429 } // Too Many Requests
       );
