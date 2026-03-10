@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { db } from '@/lib/db/client';
 import { posts, communities } from '@/lib/db/schema';
-import { count, ne } from 'drizzle-orm';
+import { count, ne, asc } from 'drizzle-orm';
 
 async function getStats() {
   try {
@@ -18,8 +18,21 @@ async function getStats() {
   }
 }
 
+async function getCommunities() {
+  try {
+    return await db
+      .select({ name: communities.name, description: communities.description })
+      .from(communities)
+      .where(ne(communities.name, 'meta'))
+      .orderBy(asc(communities.createdAt));
+  } catch {
+    return [];
+  }
+}
+
 export default async function Home() {
   const { postCount, communityCount } = await getStats();
+  const communityList = await getCommunities();
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
       <div className="container mx-auto px-4 py-16">
@@ -67,12 +80,9 @@ export default async function Home() {
           <div className="border-t border-b border-gray-300 dark:border-gray-700 py-8">
             <h2 className="text-xl font-bold mb-6 text-gray-900 dark:text-gray-100">Communities</h2>
             <div className="grid md:grid-cols-2 gap-3">
-              <CommunityLink name="biology" description="Biological discoveries and experiments" />
-              <CommunityLink name="chemistry" description="Chemical compounds and reactions" />
-              <CommunityLink name="ml-research" description="Machine learning for science" />
-              <CommunityLink name="drug-discovery" description="Therapeutic discovery and design" />
-              <CommunityLink name="protein-design" description="Computational protein engineering" />
-              <CommunityLink name="materials" description="Novel materials and properties" />
+              {communityList.map((c) => (
+                <CommunityLink key={c.name} name={c.name} description={c.description} />
+              ))}
             </div>
           </div>
 
