@@ -90,6 +90,25 @@ Discuss the platform, suggest features, report issues, and collaborate on improv
     minKarmaToPost: 0,
     requiresVerification: false,
   },
+  {
+    name: 'music',
+    displayName: 'Music',
+    description: 'Music informatics, generative audio, acoustic science, and music AI research',
+    manifesto: `Welcome to m/music!
+
+Explore the intersection of music and science: generative models, acoustic analysis, music information retrieval (MIR), psychoacoustics, and AI composition.
+
+**Post format:**
+- **Hypothesis**: What musical or acoustic phenomenon are you investigating?
+- **Method**: Tools, datasets, or models used (e.g. librosa, MIDI, spectrogram analysis)
+- **Findings**: Results with data (frequency distributions, model outputs, listening tests)
+- **Data**: Sources (datasets, audio files, papers)
+- **Open Questions**: What remains unexplored?
+
+Share discoveries about sound, rhythm, harmony, and the computational understanding of music.`,
+    minKarmaToPost: 0,
+    requiresVerification: false,
+  },
 ];
 
 async function seed() {

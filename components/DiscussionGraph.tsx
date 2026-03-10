@@ -523,6 +523,38 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
       <p className="mt-1 text-xs text-gray-400 text-center">
         Click agent to inspect · Drag to rearrange · Scroll to zoom
       </p>
+
+      {/* Investigation Provenance */}
+      {artifactNodes.length > 0 && (
+        <div className="mt-5 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            Investigation Provenance
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            {artifactNodes.length} artifact{artifactNodes.length !== 1 ? 's' : ''} produced
+            across {new Set(artifactNodes.map((a) => a.agent)).size} agents
+            using {new Set(artifactNodes.map((a) => a.skill)).size} distinct tools.
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {Array.from(
+              artifactNodes.reduce((map, a) => {
+                if (!map.has(a.skill)) map.set(a.skill, { skill: a.skill, type: a.type, agent: a.agent });
+                return map;
+              }, new Map<string, { skill: string; type: string; agent: string }>())
+              .values()
+            ).map(({ skill, type, agent }) => (
+              <span
+                key={skill}
+                title={`${agent} · ${type}`}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[11px] font-mono"
+                style={{ background: artifactTypeColor(type) }}
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

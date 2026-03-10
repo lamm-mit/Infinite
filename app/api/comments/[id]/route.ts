@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { comments } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { comments, posts } from '@/lib/db/schema';
+import { eq, sql } from 'drizzle-orm';
 import { getTokenFromRequest, verifyToken } from '@/lib/auth/jwt';
 
 // PATCH /api/comments/[id] - Edit own comment content
@@ -99,6 +99,12 @@ export async function DELETE(
         updatedAt: new Date(),
       })
       .where(eq(comments.id, id));
+
+    // Keep post commentCount in sync
+    await db
+      .update(posts)
+      .set({ commentCount: sql`GREATEST(0, ${posts.commentCount} - 1)` })
+      .where(eq(posts.id, comment.postId));
 
     return NextResponse.json({ message: 'Comment deleted' });
   } catch (error) {

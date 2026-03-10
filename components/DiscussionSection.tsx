@@ -2,6 +2,12 @@
 
 import { useState, useEffect, createContext, useContext, useCallback } from 'react';
 import { CommentsSection } from './CommentsSection';
+import dynamic from 'next/dynamic';
+
+const ArtifactChainVisualization = dynamic(
+  () => import('./ArtifactChainVisualization'),
+  { ssr: false, loading: () => <div className="h-64 flex items-center justify-center text-sm text-gray-400">Loading dataflow…</div> }
+);
 
 export interface CommentData {
   id: string;
@@ -31,7 +37,7 @@ export function useDiscussion() {
   return ctx;
 }
 
-type Mode = 'comments' | 'graph';
+type Mode = 'comments' | 'graph' | 'dataflow';
 
 interface DiscussionSectionProps {
   postId: string;
@@ -44,6 +50,7 @@ export function DiscussionSection({ postId, initialCount }: DiscussionSectionPro
   const [error, setError] = useState<string | null>(null);
   const [commentCount, setCommentCount] = useState(initialCount);
   const [mode, setMode] = useState<Mode>('comments');
+  const [hasArtifacts, setHasArtifacts] = useState(false);
 
   // Lazy-load DiscussionGraph to allow graceful fallback if D3 fails
   const [GraphComponent, setGraphComponent] = useState<React.ComponentType<{ postId: string }> | null>(null);
@@ -62,6 +69,14 @@ export function DiscussionSection({ postId, initialCount }: DiscussionSectionPro
     } finally {
       setIsLoading(false);
     }
+  }, [postId]);
+
+  // Check if this post has artifacts (to show the Dataflow tab)
+  useEffect(() => {
+    fetch(`/api/posts/${postId}/artifacts`)
+      .then((r) => r.ok ? r.json() : { count: 0 })
+      .then((data) => setHasArtifacts((data.count ?? 0) > 0))
+      .catch(() => {});
   }, [postId]);
 
   useEffect(() => {
@@ -93,38 +108,47 @@ export function DiscussionSection({ postId, initialCount }: DiscussionSectionPro
     onCommentAdded: fetchComments,
   };
 
+  const tabClass = (t: Mode) =>
+    `px-4 py-1.5 transition-colors ${
+      mode === t
+        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+    }`;
+
   return (
     <DiscussionContext.Provider value={ctx}>
       <div className="mt-6">
         {showToggle && (
           <div className="flex justify-end mb-3">
             <div className="inline-flex rounded-full border border-gray-300 dark:border-gray-600 overflow-hidden text-sm font-medium">
-              <button
-                onClick={() => setMode('comments')}
-                className={`px-4 py-1.5 transition-colors ${
-                  mode === 'comments'
-                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
+              <button onClick={() => setMode('comments')} className={tabClass('comments')}>
                 Comments
               </button>
-              <button
-                onClick={() => setMode('graph')}
-                className={`px-4 py-1.5 transition-colors ${
-                  mode === 'graph'
-                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
+              <button onClick={() => setMode('graph')} className={tabClass('graph')}>
                 Graph
               </button>
+              {hasArtifacts && (
+                <button onClick={() => setMode('dataflow')} className={tabClass('dataflow')}>
+                  Dataflow
+                </button>
+              )}
             </div>
           </div>
         )}
 
         {mode === 'comments' && <CommentsSection />}
         {mode === 'graph' && GraphComponent && <GraphComponent postId={postId} />}
+        {mode === 'dataflow' && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              Investigation Provenance
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              Data flow between computational tools used in this investigation.
+            </p>
+            <ArtifactChainVisualization postId={postId} />
+          </div>
+        )}
       </div>
     </DiscussionContext.Provider>
   );
