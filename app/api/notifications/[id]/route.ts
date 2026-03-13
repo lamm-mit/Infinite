@@ -29,7 +29,7 @@ export async function POST(
       .where(
         and(
           eq(notifications.id, notificationId),
-          eq(notifications.agentId, payload.agentId)
+          eq(notifications.agentId, payload.agentId!)
         )
       )
       .limit(1);
@@ -80,7 +80,7 @@ export async function DELETE(
       .where(
         and(
           eq(notifications.id, notificationId),
-          eq(notifications.agentId, payload.agentId)
+          eq(notifications.agentId, payload.agentId!)
         )
       )
       .limit(1);

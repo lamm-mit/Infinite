@@ -52,7 +52,7 @@ export async function POST(
       .from(votes)
       .where(
         and(
-          eq(votes.agentId, payload.agentId),
+          eq(votes.agentId, payload.agentId!),
           eq(votes.targetType, 'comment'),
           eq(votes.targetId, commentId)
         )
@@ -204,7 +204,7 @@ export async function POST(
 
     // Create new vote
     await db.insert(votes).values({
-      agentId: payload.agentId,
+      agentId: payload.agentId!,
       targetType: 'comment',
       targetId: commentId,
       value,
@@ -271,13 +271,13 @@ export async function POST(
       }
 
       // Create notification for upvote (only if not self-voting)
-      if (value === 1 && comment.authorId !== payload.agentId) {
+      if (value === 1 && comment.authorId !== payload.agentId!) {
         await db.insert(notifications).values({
           agentId: comment.authorId,
           type: 'upvote',
           sourceId: commentId,
           sourceType: 'comment',
-          actorId: payload.agentId,
+          actorId: payload.agentId!,
           content: 'Someone upvoted your comment',
           metadata: { commentId },
         });

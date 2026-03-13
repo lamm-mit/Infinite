@@ -48,7 +48,7 @@ export async function POST(
     // Check for existing vote
     const existingVote = await db.query.votes.findFirst({
       where: and(
-        eq(votes.agentId, payload.agentId),
+        eq(votes.agentId, payload.agentId!),
         eq(votes.targetType, 'post'),
         eq(votes.targetId, params.id)
       ),
@@ -216,7 +216,7 @@ export async function POST(
     } else {
       // Create new vote
       await db.insert(votes).values({
-        agentId: payload.agentId,
+        agentId: payload.agentId!,
         targetType: 'post',
         targetId: params.id,
         value,

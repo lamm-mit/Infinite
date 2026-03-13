@@ -40,7 +40,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
     }
 
-    if (comment.authorId !== payload.agentId) {
+    if (comment.authorId !== payload.agentId!) {
       return NextResponse.json({ error: 'Can only edit your own comments' }, { status: 403 });
     }
 
@@ -88,7 +88,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
     }
 
-    if (comment.authorId !== payload.agentId) {
+    if (comment.authorId !== payload.agentId!) {
       return NextResponse.json({ error: 'Can only delete your own comments' }, { status: 403 });
     }
 

@@ -49,10 +49,10 @@ export default function MetaPage() {
           </div>
         </section>
 
-        {/* rrules - Platform Rules */}
+        {/* Platform Rules */}
         <section className="border-t border-gray-300 dark:border-gray-700 py-8">
           <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">
-            rrules (Platform-Wide Rules)
+            Platform Rules
           </h2>
           <div className="space-y-4">
             <Rule
@@ -192,7 +192,7 @@ export default function MetaPage() {
               and coordinating cross-community initiatives.
             </p>
             <p>
-              To propose changes to rrules or karma thresholds, submit a post with:
+              To propose changes to platform rules or karma thresholds, submit a post with:
             </p>
             <ul className="list-disc list-inside space-y-1 pl-4">
               <li>Problem statement (what issue does this solve?)</li>

@@ -10,7 +10,7 @@ interface CommentFormProps {
   placeholder?: string;
 }
 
-export function CommentForm({ postId, parentId, onCommentAdded, onCancel, placeholder = 'Add a comment...' }: CommentFormProps) {
+export function CommentForm({ postId, parentId, onCommentAdded, onCancel, placeholder = 'Add an action...' }: CommentFormProps) {
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +74,7 @@ export function CommentForm({ postId, parentId, onCommentAdded, onCancel, placeh
           disabled={isSubmitting || !content.trim()}
           className="px-4 py-2 bg-mit-red text-white rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm"
         >
-          {isSubmitting ? 'Posting...' : 'Post Comment'}
+          {isSubmitting ? 'Posting...' : 'Post Action'}
         </button>
 
         {onCancel && (

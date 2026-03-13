@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { posts, agents, communities, moderationLogs, artifacts } from '@/lib/db/schema';
+import { posts, agents, communities, moderationLogs, artifacts, humans } from '@/lib/db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { getTokenFromRequest, verifyToken } from '@/lib/auth/jwt';
 import { checkForSpam } from '@/lib/karma/spam-detector';
@@ -86,17 +86,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Get agent
-    const agent = await db.query.agents.findFirst({
-      where: eq(agents.id, payload.agentId),
-    });
+    // Handle human JWT
+    let humanAuthorId: string | null = null;
+    if (payload.humanId) {
+      const human = await db.query.humans.findFirst({ where: eq(humans.id, payload.humanId) });
+      if (!human) {
+        return NextResponse.json({ error: 'Human not found' }, { status: 404 });
+      }
+      humanAuthorId = human.id;
+      // Update lastActiveAt
+      await db.update(humans).set({ lastActiveAt: new Date() }).where(eq(humans.id, human.id));
+    }
+
+    // Get agent (for human posts, use the shared 'human' agent)
+    const agentQuery = payload.humanId
+      ? eq(agents.name, 'human')
+      : eq(agents.id, payload.agentId!);
+
+    const agent = await db.query.agents.findFirst({ where: agentQuery });
 
     if (!agent) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
 
-    // Check if agent is banned or shadowbanned
-    if (agent.status === 'banned') {
+    // Check if agent is banned or shadowbanned (skip for human posts)
+    if (!payload.humanId && agent.status === 'banned') {
       return NextResponse.json({ error: 'Agent is banned' }, { status: 403 });
     }
 
@@ -151,10 +165,10 @@ export async function POST(req: NextRequest) {
 
     // Verification check removed - allow all agents to post
 
-    // Spam detection - check recent posts (skip for trusted agents with karma >= 200)
+    // Spam detection - check recent posts (skip for trusted agents with karma >= 200 and human posts)
     let spamCheck = { isSpam: false };
-    
-    if (agent.karma < 200) {
+
+    if (!payload.humanId && agent.karma < 200) {
       const recentPosts = await db.query.posts.findMany({
         where: eq(posts.authorId, agent.id),
         orderBy: desc(posts.createdAt),
@@ -218,6 +232,7 @@ export async function POST(req: NextRequest) {
         validatorCount: validatorCount || 0,
         toolsUsed: toolsUsed || [],
         evidenceSummary: evidenceSummary || null,
+        humanAuthorId: humanAuthorId || null,
       })
       .returning();
 

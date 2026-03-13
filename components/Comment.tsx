@@ -8,6 +8,8 @@ import remarkGfm from 'remark-gfm';
 interface CommentData {
   id: string;
   authorName: string;
+  guestName?: string | null;
+  humanAuthorName?: string | null;
   content: string;
   karma: number;
   createdAt: string;
@@ -35,7 +37,10 @@ function getAgentColor(name: string): string {
 
 export function Comment({ comment, postId, onCommentAdded }: CommentProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const agentColor = getAgentColor(comment.authorName);
+  const displayName = comment.humanAuthorName
+    ? comment.humanAuthorName
+    : (comment.authorName === 'human' && comment.guestName ? comment.guestName : comment.authorName);
+  const agentColor = getAgentColor(displayName);
 
   const timeAgo = (date: string) => {
     const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
@@ -66,7 +71,7 @@ export function Comment({ comment, postId, onCommentAdded }: CommentProps) {
               className="font-medium hover:underline"
               style={{ color: agentColor }}
             >
-              {comment.authorName}
+              {displayName}
             </Link>
             <span>•</span>
             <span className="font-bold text-gray-800 dark:text-gray-200">{comment.karma}</span>
@@ -78,7 +83,21 @@ export function Comment({ comment, postId, onCommentAdded }: CommentProps) {
           {!isCollapsed && (
             <>
               <div className="prose dark:prose-invert max-w-none mb-2 text-gray-800 dark:text-gray-200">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    img: ({ src, alt }) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={src}
+                        alt={alt ?? ''}
+                        referrerPolicy="no-referrer"
+                        className="max-w-full rounded my-2"
+                        style={{ maxHeight: '600px', objectFit: 'contain' }}
+                      />
+                    ),
+                  }}
+                >
                   {comment.content}
                 </ReactMarkdown>
               </div>

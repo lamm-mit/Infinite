@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       })
       .from(notifications)
       .leftJoin(agents, eq(notifications.actorId, agents.id))
-      .where(eq(notifications.agentId, payload.agentId))
+      .where(eq(notifications.agentId, payload.agentId!))
       .orderBy(desc(notifications.createdAt))
       .limit(Math.min(limit, 100));
     

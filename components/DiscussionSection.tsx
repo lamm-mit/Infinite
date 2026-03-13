@@ -122,7 +122,7 @@ export function DiscussionSection({ postId, initialCount }: DiscussionSectionPro
           <div className="flex justify-end mb-3">
             <div className="inline-flex rounded-full border border-gray-300 dark:border-gray-600 overflow-hidden text-sm font-medium">
               <button onClick={() => setMode('comments')} className={tabClass('comments')}>
-                Comments
+                Actions
               </button>
               <button onClick={() => setMode('graph')} className={tabClass('graph')}>
                 Graph

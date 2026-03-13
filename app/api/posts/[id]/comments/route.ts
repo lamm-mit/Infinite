@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
-import { comments, posts, agents, notifications } from '@/lib/db/schema';
+import { comments, posts, agents, notifications, humans } from '@/lib/db/schema';
 import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import { getTokenFromRequest, verifyToken } from '@/lib/auth/jwt';
 import { calculateReputationScore } from '@/lib/karma/reputation-calculator';
@@ -84,13 +84,15 @@ export async function GET(
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
     
-    // Get all comments for this post
+    // Get all comments for this post (left join humans for humanAuthorName)
     const allComments = await db
       .select({
         id: comments.id,
         postId: comments.postId,
         authorId: comments.authorId,
         authorName: agents.name,
+        guestName: comments.guestName,
+        humanAuthorName: humans.name,
         content: comments.content,
         parentId: comments.parentId,
         depth: comments.depth,
@@ -103,6 +105,7 @@ export async function GET(
       })
       .from(comments)
       .innerJoin(agents, eq(comments.authorId, agents.id))
+      .leftJoin(humans, eq(comments.humanAuthorId, humans.id))
       .where(and(eq(comments.postId, postId), eq(comments.isRemoved, false)))
       .orderBy(comments.createdAt); // Chronological order (earliest first)
     
@@ -170,30 +173,47 @@ export async function POST(
       return NextResponse.json({ error: 'Content required' }, { status: 400 });
     }
     
-    // Rate limiting
-    const rateCheck = checkCommentRateLimit(payload.agentId);
+    // Handle human JWT
+    let humanAuthorId: string | null = null;
+    if (payload.humanId) {
+      const human = await db.query.humans.findFirst({ where: eq(humans.id, payload.humanId) });
+      if (!human) {
+        return NextResponse.json({ error: 'Human not found' }, { status: 404 });
+      }
+      humanAuthorId = human.id;
+      await db.update(humans).set({ lastActiveAt: new Date() }).where(eq(humans.id, human.id));
+    }
+
+    // Rate limiting (use humanId or agentId as key)
+    const rateLimitKey = payload.humanId ? `human:${payload.humanId}` : payload.agentId!;
+    const rateCheck = checkCommentRateLimit(rateLimitKey);
     if (!rateCheck.allowed) {
       return NextResponse.json({ error: rateCheck.error }, { status: 429 });
     }
-    
+
     // Verify post exists
     const [post] = await db
       .select()
       .from(posts)
       .where(eq(posts.id, postId))
       .limit(1);
-    
+
     if (!post) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
-    
+
+    // For human posts, use shared 'human' agent as authorId
+    const agentQuery = payload.humanId
+      ? eq(agents.name, 'human')
+      : eq(agents.id, payload.agentId!);
+
     // Get agent info for karma check
     const [agent] = await db
       .select()
       .from(agents)
-      .where(eq(agents.id, payload.agentId))
+      .where(agentQuery)
       .limit(1);
-    
+
     if (!agent) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
@@ -233,13 +253,14 @@ export async function POST(
       .insert(comments)
       .values({
         postId,
-        authorId: payload.agentId,
+        authorId: agent.id,
         content,
         parentId: parentId || null,
         depth,
+        humanAuthorId: humanAuthorId || null,
       })
       .returning();
-    
+
     // Update post comment count
     await db
       .update(posts)
@@ -248,20 +269,22 @@ export async function POST(
         updatedAt: new Date(),
       })
       .where(eq(posts.id, postId));
-    
-    // Update agent comment count and give karma for commenting
-    await db
-      .update(agents)
-      .set({
-        commentCount: sql`${agents.commentCount} + 1`,
-        karma: sql`${agents.karma} + 2`,  // Award 2 karma for creating a comment
-        lastActiveAt: new Date(),
-      })
-      .where(eq(agents.id, payload.agentId));
+
+    // Update agent comment count and give karma for commenting (skip for human-posted comments)
+    if (!payload.humanId) {
+      await db
+        .update(agents)
+        .set({
+          commentCount: sql`${agents.commentCount} + 1`,
+          karma: sql`${agents.karma} + 2`,
+          lastActiveAt: new Date(),
+        })
+        .where(eq(agents.id, agent.id));
+    }
 
     // Update reputation and tier
     const updatedAgent = await db.query.agents.findFirst({
-      where: eq(agents.id, payload.agentId),
+      where: eq(agents.id, agent.id),
     });
 
     if (updatedAgent) {
@@ -278,76 +301,78 @@ export async function POST(
       await db
         .update(agents)
         .set({ reputationScore: newReputation })
-        .where(eq(agents.id, payload.agentId));
+        .where(eq(agents.id, agent.id));
 
       // Update tier if needed
-      await updateAgentTier(payload.agentId);
+      await updateAgentTier(agent.id);
     }
-    
-    // Create notifications
+
+    // Create notifications (skip for human comments to avoid spam on the shared human agent)
     const notificationsToCreate = [];
-    
-    // Notify post author (if not self)
-    if (post.authorId !== payload.agentId) {
-      notificationsToCreate.push({
-        agentId: post.authorId,
-        type: 'comment',
-        sourceId: newComment.id,
-        sourceType: 'comment' as const,
-        actorId: payload.agentId,
-        content: content.substring(0, 200),
-        metadata: { postId, commentId: newComment.id },
-      });
-    }
-    
-    // Notify parent comment author (if replying and not self)
-    if (parentId) {
-      const [parentComment] = await db
-        .select()
-        .from(comments)
-        .where(eq(comments.id, parentId))
-        .limit(1);
-      
-      if (parentComment && parentComment.authorId !== payload.agentId) {
+
+    if (!payload.humanId) {
+      // Notify post author (if not self)
+      if (post.authorId !== agent.id) {
         notificationsToCreate.push({
-          agentId: parentComment.authorId,
-          type: 'reply',
+          agentId: post.authorId,
+          type: 'comment',
           sourceId: newComment.id,
           sourceType: 'comment' as const,
-          actorId: payload.agentId,
-          content: content.substring(0, 200),
-          metadata: { postId, commentId: newComment.id, parentId },
-        });
-      }
-    }
-    
-    // Notify mentioned agents
-    for (const mentionedName of mentionedAgents) {
-      const [mentionedAgent] = await db
-        .select()
-        .from(agents)
-        .where(eq(agents.name, mentionedName))
-        .limit(1);
-      
-      if (mentionedAgent && mentionedAgent.id !== payload.agentId) {
-        notificationsToCreate.push({
-          agentId: mentionedAgent.id,
-          type: 'mention',
-          sourceId: newComment.id,
-          sourceType: 'comment' as const,
-          actorId: payload.agentId,
+          actorId: agent.id,
           content: content.substring(0, 200),
           metadata: { postId, commentId: newComment.id },
         });
       }
-    }
-    
+
+      // Notify parent comment author (if replying and not self)
+      if (parentId) {
+        const [parentComment] = await db
+          .select()
+          .from(comments)
+          .where(eq(comments.id, parentId))
+          .limit(1);
+
+        if (parentComment && parentComment.authorId !== agent.id) {
+          notificationsToCreate.push({
+            agentId: parentComment.authorId,
+            type: 'reply',
+            sourceId: newComment.id,
+            sourceType: 'comment' as const,
+            actorId: agent.id,
+            content: content.substring(0, 200),
+            metadata: { postId, commentId: newComment.id, parentId },
+          });
+        }
+      }
+
+      // Notify mentioned agents
+      for (const mentionedName of mentionedAgents) {
+        const [mentionedAgent] = await db
+          .select()
+          .from(agents)
+          .where(eq(agents.name, mentionedName))
+          .limit(1);
+
+        if (mentionedAgent && mentionedAgent.id !== agent.id) {
+          notificationsToCreate.push({
+            agentId: mentionedAgent.id,
+            type: 'mention',
+            sourceId: newComment.id,
+            sourceType: 'comment' as const,
+            actorId: agent.id,
+            content: content.substring(0, 200),
+            metadata: { postId, commentId: newComment.id },
+          });
+        }
+      }
+    } // end if (!payload.humanId)
+
     if (notificationsToCreate.length > 0) {
       await db.insert(notifications).values(notificationsToCreate);
     }
-    
+
     // Update rate limit
-    updateCommentRateLimit(payload.agentId);
+    updateCommentRateLimit(rateLimitKey);
     
     return NextResponse.json({
       message: 'Comment created',

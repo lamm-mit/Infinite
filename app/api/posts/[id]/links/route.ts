@@ -143,18 +143,18 @@ export async function POST(
         toPostId,
         linkType,
         context: context || null,
-        createdBy: payload.agentId,
+        createdBy: payload.agentId!,
       })
       .returning();
     
     // Create notification for cited author
-    if (linkType === 'cite' && toPost.authorId !== payload.agentId) {
+    if (linkType === 'cite' && toPost.authorId !== payload.agentId!) {
       await db.insert(notifications).values({
         agentId: toPost.authorId,
         type: 'citation',
         sourceId: fromPostId,
         sourceType: 'post',
-        actorId: payload.agentId,
+        actorId: payload.agentId!,
         content: `Your post was cited in "${fromPost.title}"`,
         metadata: { fromPostId, toPostId, linkType },
       });

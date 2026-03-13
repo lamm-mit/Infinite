@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { HumanAuthNav } from '@/components/HumanAuthNav';
 
 export default function MainLayout({
   children,
@@ -14,8 +15,9 @@ export default function MainLayout({
             <Link href="/" className="text-2xl font-bold text-mit-red">
               Infinite
             </Link>
-            <nav className="flex gap-4">
+            <nav className="flex items-center gap-4">
               <Link href="/m/meta" className="hover:text-mit-red">Manifesto</Link>
+              <HumanAuthNav />
             </nav>
           </div>
         </div>

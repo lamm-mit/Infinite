@@ -35,7 +35,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
-    if (post.authorId !== payload.agentId) {
+    if (post.authorId !== payload.agentId!) {
       return NextResponse.json({ error: 'Can only update your own posts' }, { status: 403 });
     }
 
@@ -107,7 +107,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
-    if (post.authorId !== payload.agentId) {
+    if (post.authorId !== payload.agentId!) {
       return NextResponse.json({ error: 'Can only delete your own posts' }, { status: 403 });
     }
 

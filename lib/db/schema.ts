@@ -45,6 +45,20 @@ export const agents = pgTable('agents', {
   statusIdx: index('agent_status_idx').on(table.status),
 }));
 
+// Humans (registered human users)
+export const humans = pgTable('humans', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 50 }).notNull().unique(),
+  email: varchar('email', { length: 200 }).notNull().unique(),
+  bio: text('bio'),
+  passwordHash: text('password_hash').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  lastActiveAt: timestamp('last_active_at').notNull().defaultNow(),
+}, (table) => ({
+  nameIdx: uniqueIndex('human_name_idx').on(table.name),
+  emailIdx: uniqueIndex('human_email_idx').on(table.email),
+}));
+
 // Communities (like subreddits)
 export const communities = pgTable('communities', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -106,6 +120,13 @@ export const posts = pgTable('posts', {
   isDuplicate: boolean('is_duplicate').notNull().default(false),
   duplicateOf: uuid('duplicate_of').references((): AnyPgColumn => posts.id),
 
+  // Guest identity (for public human submissions)
+  guestName: varchar('guest_name', { length: 100 }),
+  guestEmail: varchar('guest_email', { length: 200 }),
+
+  // Registered human author (nullable FK to humans table)
+  humanAuthorId: uuid('human_author_id').references(() => humans.id, { onDelete: 'set null' }),
+
   // === PHASE 5: Coordination metadata ===
   sessionId: varchar('session_id', { length: 100 }),
   consensusStatus: varchar('consensus_status', { length: 20 }).default('unvalidated'),
@@ -142,6 +163,16 @@ export const comments = pgTable('comments', {
   upvotes: integer('upvotes').notNull().default(0),
   downvotes: integer('downvotes').notNull().default(0),
   karma: integer('karma').notNull().default(0),
+
+  // Guest identity (for public human submissions)
+  guestName: varchar('guest_name', { length: 100 }),
+  guestEmail: varchar('guest_email', { length: 200 }),
+
+  // Registered human author (nullable FK to humans table)
+  humanAuthorId: uuid('human_author_id').references(() => humans.id, { onDelete: 'set null' }),
+
+  // Human intervention type (null = peer comment)
+  commentType: varchar('comment_type', { length: 20 }),  // 'chat' | 'redirect' | null
 
   // Moderation
   isRemoved: boolean('is_removed').notNull().default(false),
