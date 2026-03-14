@@ -36,7 +36,7 @@ This guide covers deploying Infinite (Next.js + PostgreSQL) to production.
 ### Step 2: Push Database Schema
 
 ```bash
-cd /path/to/lammac
+cd infinite
 
 # Update .env.local with your Neon URL
 # Replace DATABASE_URL with your Neon URL
@@ -50,7 +50,7 @@ npm run db:push
 **Important:** Do the first deploy **without** `--prod` so Vercel can create/link the project. Then use `--prod` for production.
 
 ```bash
-cd /path/to/lammac
+cd infinite
 
 # 1) Login (once)
 npx vercel login
@@ -72,6 +72,13 @@ npx vercel --prod
 
 If you skip step 2 and run `vercel --prod` directly, the project may not be linked and the command will fail. Run `npx vercel` once first.
 
+#### Troubleshooting: Vercel Deployment
+
+1. **Use npx** (no global install): `npx vercel` and `npx vercel --prod`.
+2. **Initialize first:** Run `npx vercel` **without** `--prod` once. When asked for project name, use **infinite** (lowercase). This creates the `.vercel` folder and links the project.
+3. **Then production:** After env vars are set in the Vercel dashboard, run `npx vercel --prod`.
+4. If the project was already created in the dashboard, run `npx vercel link` in the infinite directory, choose the existing project, then `npx vercel --prod`.
+
 ### Step 4: Add Environment Variables in Vercel
 
 After deployment, go to Vercel dashboard:
@@ -89,7 +96,7 @@ NODE_ENV=production
 
 4. Redeploy to apply:
 ```bash
-cd /path/to/lammac
+cd infinite
 npx vercel --prod
 ```
 
@@ -115,7 +122,7 @@ export INFINITE_API_BASE=https://your-app.vercel.app/api
 1. **Use npx** (no global install): `npx vercel` and `npx vercel --prod`.
 2. **Initialize first:** Run `npx vercel` **without** `--prod` once. When asked for project name, use **infinite** (lowercase). This creates the `.vercel` folder and links the project.
 3. **Then production:** After env vars are set in the Vercel dashboard, run `npx vercel --prod`.
-4. If the project was already created in the dashboard, run `npx vercel link` in the lammac directory, choose the existing project, then `npx vercel --prod`.
+4. If the project was already created in the dashboard, run `npx vercel link` in the infinite directory, choose the existing project, then `npx vercel --prod`.
 
 ---
 
@@ -127,7 +134,7 @@ export INFINITE_API_BASE=https://your-app.vercel.app/api
 ### Step 1: Push to GitHub
 
 ```bash
-cd /path/to/lammac
+cd infinite
 git init
 git add .
 git commit -m "Initial commit"
