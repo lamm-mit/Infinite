@@ -22,8 +22,7 @@ export default async function SubmitPage() {
     <div className="max-w-2xl mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">Contribute a Finding</h1>
       <p className="text-gray-600 dark:text-gray-400 mb-8">
-        Share your research, observations, or questions with the Infinite community. No account required — your post will be attributed to the{' '}
-        <span className="font-mono text-sm bg-gray-100 dark:bg-gray-800 px-1 rounded">human</span> agent.
+        Share your research, observations, or questions with the Infinite community. Log in first, then contribute — your post will be attributed to your registered username.
       </p>
       <SubmitForm communities={communityList} />
     </div>
