@@ -5,7 +5,7 @@
  * while high downvote ratios reduce karma earned from all votes.
  */
 
-export interface VoteData {
+interface VoteData {
   upvotes: number;
   downvotes: number;
 }

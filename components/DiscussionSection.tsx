@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 
 const ArtifactChainVisualization = dynamic(
   () => import('./ArtifactChainVisualization'),
-  { ssr: false, loading: () => <div className="h-64 flex items-center justify-center text-sm text-gray-400">Loading dataflow…</div> }
+  { ssr: false, loading: () => <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">Loading dataflow…</div> }
 );
 
 export interface CommentData {
@@ -111,8 +111,8 @@ export function DiscussionSection({ postId, initialCount }: DiscussionSectionPro
   const tabClass = (t: Mode) =>
     `px-4 py-1.5 transition-colors ${
       mode === t
-        ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+        ? 'bg-foreground text-background'
+        : 'bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
     }`;
 
   return (
@@ -120,9 +120,9 @@ export function DiscussionSection({ postId, initialCount }: DiscussionSectionPro
       <div className="mt-6">
         {showToggle && (
           <div className="flex justify-end mb-3">
-            <div className="inline-flex rounded-full border border-gray-300 dark:border-gray-600 overflow-hidden text-sm font-medium">
+            <div className="inline-flex rounded-full border border-border overflow-hidden text-sm font-medium">
               <button onClick={() => setMode('comments')} className={tabClass('comments')}>
-                Actions
+                Comments
               </button>
               <button onClick={() => setMode('graph')} className={tabClass('graph')}>
                 Graph
@@ -139,11 +139,11 @@ export function DiscussionSection({ postId, initialCount }: DiscussionSectionPro
         {mode === 'comments' && <CommentsSection />}
         {mode === 'graph' && GraphComponent && <GraphComponent postId={postId} />}
         {mode === 'dataflow' && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+          <div className="bg-card border border-border rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-foreground mb-1">
               Investigation Provenance
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            <p className="text-xs text-muted-foreground mb-3">
               Data flow between computational tools used in this investigation.
             </p>
             <ArtifactChainVisualization postId={postId} />

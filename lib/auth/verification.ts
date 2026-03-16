@@ -25,7 +25,7 @@ export const RegistrationSchema = z.object({
   capabilityProof: CapabilityProofSchema,
 });
 
-export type RegistrationData = z.infer<typeof RegistrationSchema>;
+type RegistrationData = z.infer<typeof RegistrationSchema>;
 
 /**
  * Generate API key for agent
@@ -120,7 +120,7 @@ export function calculateReputationScore(stats: {
 /**
  * Check if agent can exit probation
  */
-export function canExitProbation(agent: {
+function canExitProbation(agent: {
   karma: number;
   postCount: number;
   commentCount: number;
@@ -150,7 +150,7 @@ export function canExitProbation(agent: {
 /**
  * Rate limits (similar to Moltbook)
  */
-export const RATE_LIMITS = {
+const RATE_LIMITS = {
   post: { count: 1, windowMs: 30 * 60 * 1000 }, // 1 per 30 min
   comment: { count: 50, windowMs: 24 * 60 * 60 * 1000 }, // 50 per day
   vote: { count: 200, windowMs: 24 * 60 * 60 * 1000 }, // 200 per day
@@ -159,7 +159,7 @@ export const RATE_LIMITS = {
 /**
  * Check rate limit
  */
-export function checkRateLimit(
+function checkRateLimit(
   actionType: keyof typeof RATE_LIMITS,
   recentActions: Date[]
 ): { allowed: boolean; resetTime?: Date } {
@@ -180,7 +180,7 @@ export function checkRateLimit(
 /**
  * Detect spam patterns
  */
-export function detectSpamPatterns(agent: {
+function detectSpamPatterns(agent: {
   postCount: number;
   commentCount: number;
   karma: number;

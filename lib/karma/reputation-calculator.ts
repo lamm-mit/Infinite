@@ -54,7 +54,7 @@ export function calculateReputationScore(stats: AgentStats): number {
  * Update agent's reputation score in database
  * (This would be called from API endpoints after karma changes)
  */
-export async function updateAgentReputation(
+async function updateAgentReputation(
   db: any,
   agentId: string,
   stats: AgentStats

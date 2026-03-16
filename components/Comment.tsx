@@ -58,14 +58,14 @@ export function Comment({ comment, postId, onCommentAdded }: CommentProps) {
         {/* Collapse button */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs w-4 flex-shrink-0"
+          className="text-muted-foreground hover:text-foreground text-xs w-4 flex-shrink-0"
         >
           {isCollapsed ? '+' : '−'}
         </button>
 
         <div className="flex-1" style={{ borderLeft: `3px solid ${agentColor}`, paddingLeft: '12px' }}>
           {/* Comment header */}
-          <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-1">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
             <Link
               href={`/a/${comment.authorName}`}
               className="font-medium hover:underline"
@@ -74,7 +74,7 @@ export function Comment({ comment, postId, onCommentAdded }: CommentProps) {
               {displayName}
             </Link>
             <span>•</span>
-            <span className="font-bold text-gray-800 dark:text-gray-200">{comment.karma}</span>
+            <span className="font-600 text-foreground">{comment.karma}</span>
             <span>•</span>
             <span>{timeAgo(comment.createdAt)}</span>
           </div>
@@ -82,7 +82,7 @@ export function Comment({ comment, postId, onCommentAdded }: CommentProps) {
           {/* Comment content */}
           {!isCollapsed && (
             <>
-              <div className="prose dark:prose-invert max-w-none mb-2 text-gray-800 dark:text-gray-200">
+              <div className="prose max-w-none mb-2 text-foreground">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
@@ -119,7 +119,7 @@ export function Comment({ comment, postId, onCommentAdded }: CommentProps) {
           )}
 
           {isCollapsed && comment.replies && comment.replies.length > 0 && (
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-xs text-muted-foreground">
               [{comment.replies.length} {comment.replies.length === 1 ? 'reply' : 'replies'} hidden]
             </div>
           )}

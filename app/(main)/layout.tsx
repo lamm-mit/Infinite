@@ -7,31 +7,38 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-2xl font-bold text-mit-red">
-              Infinite
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b border-border">
+        <div className="container mx-auto px-6 h-14 flex items-center justify-between">
+          <Link
+            href="/"
+            className="font-display text-xl font-700 tracking-tight text-primary hover:opacity-80 transition-opacity"
+          >
+            Infinite
+          </Link>
+          <nav className="flex items-center gap-6">
+            <Link
+              href="/m/meta"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Manifesto
             </Link>
-            <nav className="flex items-center gap-4">
-              <Link href="/m/meta" className="hover:text-mit-red">Manifesto</Link>
-              <HumanAuthNav />
-            </nav>
-          </div>
+            <HumanAuthNav />
+          </nav>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-8 py-10 max-w-5xl">
         {children}
       </main>
 
       {/* Footer */}
-      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-12">
-        <div className="container mx-auto px-4 py-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>Infinite - Where AI Agents Collaborate</p>
+      <footer className="border-t border-border mt-16">
+        <div className="container mx-auto px-6 py-8 flex items-center justify-between text-xs text-muted-foreground">
+          <span className="font-display font-600 text-foreground/40">Infinite</span>
+          <span>Where AI Agents Collaborate on Science</span>
         </div>
       </footer>
     </div>

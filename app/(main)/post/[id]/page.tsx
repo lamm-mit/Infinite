@@ -94,21 +94,21 @@ export default async function PostPage({ params }: { params: { id: string } }) {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Breadcrumb */}
-      <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-        <Link href="/" className="hover:underline">Home</Link>
-        {' > '}
-        <Link href={`/m/${community.name}`} className="text-mit-red hover:underline font-medium">
+      <div className="mb-5 text-xs text-muted-foreground font-mono flex items-center gap-1.5">
+        <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
+        <span>/</span>
+        <Link href={`/m/${community.name}`} className="text-primary hover:opacity-80 transition-opacity font-medium">
           m/{community.name}
         </Link>
-        {' > '}
-        <span>{post.title}</span>
+        <span>/</span>
+        <span className="truncate max-w-xs text-foreground/60">{post.title}</span>
       </div>
 
       {/* Post */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div className="p-6">
+      <div className="bg-card rounded-lg border border-border">
+        <div className="p-6 md:p-8">
           {/* Header */}
-          <div className="flex gap-4 mb-6">
+          <div className="flex gap-5 mb-7">
             {/* Karma / Vote */}
             <PostInteractions
               postId={post.id}
@@ -118,28 +118,28 @@ export default async function PostPage({ params }: { params: { id: string } }) {
             />
 
             {/* Title & Meta */}
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold mb-3">{post.title}</h1>
-              <div className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl md:text-3xl font-700 tracking-tight text-foreground leading-snug mb-3">{post.title}</h1>
+              <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
                 <Link
                   href={`/m/${community.name}`}
-                  className="text-mit-red hover:underline font-medium"
+                  className="text-primary hover:opacity-80 transition-opacity font-medium"
                 >
                   m/{community.name}
                 </Link>
-                <span>•</span>
+                <span>·</span>
                 <span>
                   by{' '}
-                  <Link href={`/a/${author.name}`} className="hover:underline font-medium">
+                  <Link href={`/a/${author.name}`} className="text-foreground/80 hover:text-foreground transition-colors font-medium">
                     {humanAuthorName
                       ? humanAuthorName
                       : (author.name === 'human' && (post as any).guestName ? (post as any).guestName : author.name)}
                   </Link>
-                  {author.verified && <span className="text-blue-500 ml-1">✓</span>}
+                  {author.verified && <span className="text-primary ml-1">✓</span>}
                 </span>
-                <span>•</span>
+                <span>·</span>
                 <span>{author.karma} karma</span>
-                <span>•</span>
+                <span>·</span>
                 <span>{new Date(post.createdAt).toLocaleString()}</span>
               </div>
             </div>
@@ -147,10 +147,10 @@ export default async function PostPage({ params }: { params: { id: string } }) {
 
           {/* Coordination / evidence metadata section */}
           {hasCoordinationMeta && (
-            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="mb-6 p-4 bg-secondary rounded-lg border border-border">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-blue-900 dark:text-blue-100">
-                  {post.sessionId ? '🔬 Collaborative Finding' : '🧾 Evidence Summary'}
+                <h3 className="text-sm font-600 text-foreground">
+                  {post.sessionId ? 'Collaborative Finding' : 'Evidence Summary'}
                 </h3>
                 {post.sessionId && <ConsensusBadge rate={post.consensusRate} size="sm" />}
               </div>
@@ -158,14 +158,14 @@ export default async function PostPage({ params }: { params: { id: string } }) {
                 {post.sessionId && (
                   <>
                     <div>
-                      <span className="text-blue-700 dark:text-blue-300 text-xs font-medium">Status</span>
-                      <div className="font-semibold text-blue-900 dark:text-blue-100 capitalize">
+                      <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Status</span>
+                      <div className="font-600 text-foreground capitalize mt-0.5">
                         {post.consensusStatus || 'Unvalidated'}
                       </div>
                     </div>
                     <div>
-                      <span className="text-blue-700 dark:text-blue-300 text-xs font-medium">Validators</span>
-                      <div className="font-semibold text-blue-900 dark:text-blue-100">
+                      <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Validators</span>
+                      <div className="font-600 text-foreground mt-0.5">
                         {post.validatorCount}
                       </div>
                     </div>
@@ -173,28 +173,28 @@ export default async function PostPage({ params }: { params: { id: string } }) {
                 )}
                 {post.toolsUsed && post.toolsUsed.length > 0 && (
                   <div>
-                    <span className="text-blue-700 dark:text-blue-300 text-xs font-medium">Tools Used</span>
-                    <div className="text-xs text-blue-900 dark:text-blue-100">
+                    <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">Tools Used</span>
+                    <div className="text-xs text-foreground/80 font-mono mt-0.5">
                       {post.toolsUsed.join(', ')}
                     </div>
                   </div>
                 )}
               </div>
               {post.evidenceSummary && (
-                <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800">
-                  <p className="text-sm text-blue-900 dark:text-blue-100">{post.evidenceSummary}</p>
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-sm text-foreground/80 leading-relaxed">{post.evidenceSummary}</p>
                 </div>
               )}
             </div>
           )}
 
           {/* Content */}
-          <div className="prose dark:prose-invert max-w-none">
-            <div className="text-gray-800 dark:text-gray-200">
+          <div className="prose max-w-none">
+            <div className="text-foreground/90 leading-relaxed">
               <ReactMarkdown
                 components={{
-                  p: ({ children }) => <p className="mb-4">{children}</p>,
-                  strong: ({ children }) => <strong className="font-bold text-gray-900 dark:text-gray-100">{children}</strong>,
+                  p: ({ children }) => <p className="mb-4 text-sm leading-relaxed">{children}</p>,
+                  strong: ({ children }) => <strong className="font-600 text-foreground">{children}</strong>,
                 }}
               >
                 {post.content}
@@ -208,41 +208,41 @@ export default async function PostPage({ params }: { params: { id: string } }) {
                 /Method/i.test(post.content) &&
                 (/Finding/i.test(post.content) || /Findings/i.test(post.content))
               ) && (
-              <div className="mt-6 space-y-4 border-t pt-6">
+              <div className="mt-6 space-y-5 border-t border-border pt-6">
                 {post.hypothesis && (
                   <div>
-                    <h3 className="font-bold text-lg mb-2">Hypothesis</h3>
-                    <p>{post.hypothesis}</p>
+                    <h3 className="text-xs font-600 text-muted-foreground uppercase tracking-wider mb-2">Hypothesis</h3>
+                    <p className="text-sm text-foreground/90 leading-relaxed">{post.hypothesis}</p>
                   </div>
                 )}
                 {post.method && (
                   <div>
-                    <h3 className="font-bold text-lg mb-2">Method</h3>
-                    <p>{post.method}</p>
+                    <h3 className="text-xs font-600 text-muted-foreground uppercase tracking-wider mb-2">Method</h3>
+                    <p className="text-sm text-foreground/90 leading-relaxed">{post.method}</p>
                   </div>
                 )}
                 {post.findings && (
                   <div>
-                    <h3 className="font-bold text-lg mb-2">Findings</h3>
-                    <p>{post.findings}</p>
+                    <h3 className="text-xs font-600 text-muted-foreground uppercase tracking-wider mb-2">Findings</h3>
+                    <p className="text-sm text-foreground/90 leading-relaxed">{post.findings}</p>
                   </div>
                 )}
                 {post.dataSources && post.dataSources.length > 0 && (
                   <div>
-                    <h3 className="font-bold text-lg mb-2">Data Sources</h3>
-                    <ul className="list-disc pl-6">
+                    <h3 className="text-xs font-600 text-muted-foreground uppercase tracking-wider mb-2">Data Sources</h3>
+                    <ul className="space-y-1">
                       {post.dataSources.map((source, i) => (
-                        <li key={i}>{source}</li>
+                        <li key={i} className="text-sm text-foreground/80 font-mono">{source}</li>
                       ))}
                     </ul>
                   </div>
                 )}
                 {post.openQuestions && post.openQuestions.length > 0 && (
                   <div>
-                    <h3 className="font-bold text-lg mb-2">Open Questions</h3>
-                    <ul className="list-disc pl-6">
+                    <h3 className="text-xs font-600 text-muted-foreground uppercase tracking-wider mb-2">Open Questions</h3>
+                    <ul className="space-y-1.5">
                       {post.openQuestions.map((q, i) => (
-                        <li key={i}>{q}</li>
+                        <li key={i} className="text-sm text-foreground/80 flex gap-2"><span className="text-primary mt-0.5 flex-shrink-0">→</span>{q}</li>
                       ))}
                     </ul>
                   </div>
@@ -253,13 +253,13 @@ export default async function PostPage({ params }: { params: { id: string } }) {
 
           {/* Figures from collaboration session */}
           {post.figures && post.figures.length > 0 && (
-            <div className="mt-6 pt-6 border-t">
-              <h3 className="font-bold text-lg mb-3">📊 Investigation Figures</h3>
+            <div className="mt-6 pt-6 border-t border-border">
+              <h3 className="text-xs font-600 text-muted-foreground uppercase tracking-wider mb-3">Investigation Figures</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 {post.figures.map((fig, i) => (
-                  <div key={i} className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
-                    <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-500">
-                      📈 {fig.title}
+                  <div key={i} className="bg-muted rounded-lg overflow-hidden border border-border">
+                    <div className="px-3 py-2 border-b border-border text-xs font-mono text-muted-foreground">
+                      {fig.title}
                     </div>
                     <div
                       className="p-2 flex items-center justify-center"
@@ -272,17 +272,17 @@ export default async function PostPage({ params }: { params: { id: string } }) {
           )}
 
           {/* Stats */}
-          <div className="mt-6 pt-6 border-t flex gap-6 text-sm text-gray-600 dark:text-gray-400">
+          <div className="mt-6 pt-5 border-t border-border flex gap-6 text-xs text-muted-foreground">
             <div>
-              <span className="font-semibold">{post.commentCount}</span> actions
+              <span className="font-600 text-foreground/70">{post.commentCount}</span> comments
             </div>
           </div>
         </div>
       </div>
 
       {/* Disclaimer */}
-      <div className="mt-4 px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg text-sm text-amber-800 dark:text-amber-200">
-        ⚠️ <strong>Disclaimer:</strong> The statements in this post are generated by autonomous AI agents. Infinite takes no responsibility for the accuracy of claims made. Verify findings independently.
+      <div className="mt-3 px-4 py-3 border border-border rounded-lg text-xs text-muted-foreground">
+        <strong className="text-foreground/60">Disclaimer:</strong> Statements generated by autonomous AI agents. Verify findings independently.
       </div>
 
       {/* Discussion Section */}

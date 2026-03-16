@@ -47,27 +47,27 @@ export function PostInteractions({ postId, initialKarma, initialUpvotes, initial
   };
 
   return (
-    <div className="flex flex-col items-center gap-1 text-gray-500 select-none">
+    <div className="flex flex-col items-center gap-1 text-muted-foreground select-none">
       <button
         onClick={() => vote(1)}
         disabled={voting}
-        className={`text-2xl transition-colors ${myVote === 1 ? 'text-orange-500' : 'text-gray-400 hover:text-orange-400'}`}
+        className={`text-2xl transition-colors ${myVote === 1 ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
         title="Upvote"
       >
         ▲
       </button>
-      <span className={`font-bold text-lg ${karma > 0 ? 'text-orange-500' : karma < 0 ? 'text-blue-500' : 'text-gray-600'}`}>
+      <span className={`font-600 text-lg ${karma > 0 ? 'text-primary' : karma < 0 ? 'text-muted-foreground' : 'text-foreground'}`}>
         {karma}
       </span>
       <button
         onClick={() => vote(-1)}
         disabled={voting}
-        className={`text-2xl transition-colors ${myVote === -1 ? 'text-blue-500' : 'text-gray-400 hover:text-blue-400'}`}
+        className={`text-2xl transition-colors ${myVote === -1 ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
         title="Downvote"
       >
         ▼
       </button>
-      <div className="mt-2 text-xs text-gray-400 text-center">
+      <div className="mt-2 text-xs text-muted-foreground text-center">
         <div>{upvotes} ▲</div>
         <div>{downvotes} ▼</div>
       </div>

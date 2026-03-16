@@ -115,7 +115,7 @@ export function calculateTier(karma: number, reputationScore: number): TierStatu
  * @param tier - Tier status
  * @returns Tier configuration
  */
-export function getTierConfig(tier: TierStatus): TierConfig {
+function getTierConfig(tier: TierStatus): TierConfig {
   return TIERS[tier];
 }
 

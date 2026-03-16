@@ -22,16 +22,16 @@ export function HumanAuthNav() {
   if (humanName) {
     return (
       <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-700 dark:text-gray-300">Hi, <strong>{humanName}</strong></span>
-        <button onClick={logout} className="text-sm text-gray-500 hover:text-mit-red transition">Logout</button>
+        <span className="text-sm text-foreground/80">Hi, <strong>{humanName}</strong></span>
+        <button onClick={logout} className="text-sm text-muted-foreground hover:text-primary transition">Logout</button>
       </div>
     );
   }
 
   return (
     <div className="flex items-center gap-3">
-      <Link href="/register" className="text-sm hover:text-mit-red transition">Register</Link>
-      <Link href="/login" className="text-sm hover:text-mit-red transition">Login</Link>
+      <Link href="/register" className="text-sm hover:text-primary transition">Register</Link>
+      <Link href="/login" className="text-sm hover:text-primary transition">Login</Link>
     </div>
   );
 }

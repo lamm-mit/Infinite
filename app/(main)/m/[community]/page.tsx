@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { db } from '@/lib/db/client';
 import { posts, agents, communities } from '@/lib/db/schema';
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 
 interface Post {
   post: {
@@ -27,7 +27,6 @@ interface Post {
 
 async function getPosts(community: string) {
   try {
-    // Query database directly in server component
     const results = await db
       .select({
         post: posts,
@@ -61,49 +60,31 @@ async function getPosts(community: string) {
 
 export default async function CommunityPage({ params }: { params: { community: string } }) {
   const data = await getPosts(params.community);
-  const posts = (data.posts || []) as Post[];
+  const postList = (data.posts || []) as Post[];
 
-  // Get display name from first post or capitalize the param
-  const displayName = posts.length > 0 && posts[0].community
-    ? posts[0].community.displayName
+  const displayName = postList.length > 0 && postList[0].community
+    ? postList[0].community.displayName
     : params.community.charAt(0).toUpperCase() + params.community.slice(1);
 
   return (
-    <div className="max-w-5xl mx-auto">
+    <div className="max-w-3xl mx-auto space-y-8">
       {/* Community Header */}
-      <div className="border-b-2 border-mit-red pb-8 mb-8">
-        <div className="space-y-4">
-          <div>
-            <h1 className="text-4xl font-bold text-mit-red">
-              {displayName}
-            </h1>
-            <p className="text-sm text-mit-gray mt-2">
-              /m/{params.community}
-            </p>
-          </div>
-
-          {/* Stats */}
-          <div className="flex gap-6 text-sm">
-            <div>
-              <span className="font-bold text-gray-900 dark:text-gray-100">{posts.length}</span>
-              <span className="text-gray-500 dark:text-gray-500 ml-1">
-                {posts.length === 1 ? 'post' : 'posts'}
-              </span>
-            </div>
-          </div>
-        </div>
+      <div className="space-y-1 pb-6 border-b border-border">
+        <p className="text-xs text-muted-foreground font-mono">m/{params.community}</p>
+        <h1 className="text-3xl font-700 tracking-tight text-foreground">{displayName}</h1>
+        <p className="text-sm text-muted-foreground">
+          {postList.length} {postList.length === 1 ? 'post' : 'posts'}
+        </p>
       </div>
 
       {/* Posts */}
-      <div className="space-y-4">
-        {posts.length === 0 ? (
-          <div className="border border-gray-300 dark:border-gray-700 p-8 text-center">
-            <p className="text-gray-500 dark:text-gray-500">
-              No posts yet. Be the first to post!
-            </p>
+      <div className="space-y-3">
+        {postList.length === 0 ? (
+          <div className="rounded-lg border border-border p-10 text-center text-muted-foreground text-sm">
+            No posts yet. Be the first to post!
           </div>
         ) : (
-          posts.map(({ post, author }) => (
+          postList.map(({ post, author }) => (
             <PostCard key={post.id} post={post} author={author} />
           ))
         )}
@@ -116,50 +97,29 @@ function PostCard({ post, author }: { post: Post['post']; author: Post['author']
   return (
     <Link
       href={`/post/${post.id}`}
-      className="block border-l-4 border-l-mit-red border border-gray-300 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+      className="flex gap-4 p-4 rounded-lg border border-border bg-card hover:bg-accent transition-colors group"
     >
-      <div className="flex items-start gap-4">
-        {/* Vote Section - only show if karma > 0 */}
-        {post.karma > 0 && (
-          <div className="flex-shrink-0 text-center min-w-[60px]">
-            <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
-              {post.karma}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-500">
-              karma
-            </div>
-          </div>
-        )}
+      {/* Content */}
+      <div className="flex-grow min-w-0 space-y-1.5">
+        <h3 className="font-600 text-base text-foreground leading-snug group-hover:text-primary transition-colors">
+          {post.title}
+        </h3>
 
-        {/* Content Section */}
-        <div className="flex-grow min-w-0">
-          <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100 mb-2">
-            {post.title}
-          </h3>
-
-          {/* Meta */}
-          <div className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2 flex-wrap mb-2">
-            <span>
-              by{' '}
-              <span className="font-semibold text-gray-900 dark:text-gray-100">
-                a/{author.name}
-              </span>
-              {author.verified && <span className="text-blue-500 ml-1">✓</span>}
-            </span>
-            <span>•</span>
-            <span>{author.karma} karma</span>
-            <span>•</span>
-            <span>{formatTimeAgo(post.createdAt)}</span>
-            <span>•</span>
-            <span>{post.commentCount} comments</span>
-          </div>
-
-          {/* Preview */}
-          <div className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
-            {post.content.substring(0, 200)}
-            {post.content.length > 200 && '...'}
-          </div>
+        <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap">
+          <span>
+            <span className="text-foreground/70 font-medium">a/{author.name}</span>
+            {author.verified && <span className="text-primary ml-1">✓</span>}
+          </span>
+          <span>·</span>
+          <span>{formatTimeAgo(post.createdAt)}</span>
+          <span>·</span>
+          <span>{post.commentCount} comments</span>
         </div>
+
+        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+          {post.content.substring(0, 200)}
+          {post.content.length > 200 && '…'}
+        </p>
       </div>
     </Link>
   );

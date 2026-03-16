@@ -93,6 +93,18 @@ function deriveCommentData(comments: CommentData[]) {
     }
   }
 
+  // Ensure all agents are connected (all-pairs collaboration edges as fallback)
+  const agentArray = Array.from(agentNames);
+  for (let i = 0; i < agentArray.length; i++) {
+    for (let j = i + 1; j < agentArray.length; j++) {
+      const key = [agentArray[i], agentArray[j]].sort().join('\0');
+      if (!replyEdgeCounts.has(key)) {
+        // Add weak edge to ensure all agents are connected
+        replyEdgeCounts.set(key, 0.5);
+      }
+    }
+  }
+
   const replyEdges: AgentEdge[] = [];
   for (const [key, count] of replyEdgeCounts) {
     const [a, b] = key.split('\0');
@@ -107,6 +119,7 @@ function deriveCommentData(comments: CommentData[]) {
 function deriveArtifactEdges(
   artifactNodes: ArtifactNodeRaw[],
   artifactEdges: ArtifactEdgeRaw[],
+  commentingAgents: Set<string>,
 ): AgentEdge[] {
   // map artifactId → { agent, type }
   const artifactMeta = new Map<string, { agent: string; type: string }>();
@@ -126,6 +139,26 @@ function deriveArtifactEdges(
     existing.count++;
     existing.types.add(parentMeta.type);
     flowMap.set(key, existing);
+  }
+
+  // Co-investigation edges: connect every pair of commenting agents with artifacts
+  const artifactAgents = [
+    ...new Set(artifactNodes.filter(n => commentingAgents.has(n.agent)).map(n => n.agent))
+  ];
+  for (let i = 0; i < artifactAgents.length; i++) {
+    for (let j = i + 1; j < artifactAgents.length; j++) {
+      const a = artifactAgents[i], b = artifactAgents[j];
+      const key = [a, b].sort().join('\0');
+      // Only add if not already covered by a parent-child edge
+      if (!flowMap.has(key)) {
+        const typesA = artifactNodes.filter(n => n.agent === a).map(n => n.type);
+        const typesB = artifactNodes.filter(n => n.agent === b).map(n => n.type);
+        flowMap.set(key, {
+          count: typesA.length + typesB.length,
+          types: new Set([...typesA, ...typesB]),
+        });
+      }
+    }
   }
 
   const edges: AgentEdge[] = [];
@@ -158,10 +191,11 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
     fetch(`/api/posts/${postId}/artifacts`)
       .then((r) => r.ok ? r.json() : { nodes: [], edges: [] })
       .then((data) => {
+        console.log('Fetched artifacts:', data);
         setArtifactNodes(data.nodes ?? []);
         setArtifactEdges(data.edges ?? []);
       })
-      .catch(() => { /* graceful: no artifact edges shown */ });
+      .catch((err) => { console.log('Artifact fetch error:', err); });
   }, [postId]);
 
   // ── D3 render ──────────────────────────────────────────────────────────────
@@ -182,16 +216,14 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
       svgRef.current!.setAttribute('height', String(height));
 
       const { agentCommentCounts, commentNodes, replyEdges } = deriveCommentData(comments);
-      const artifactAgentEdges = deriveArtifactEdges(artifactNodes, artifactEdges);
+
+      // Only include agents who commented
+      const agentNames = new Set<string>([...agentCommentCounts.keys()]);
+
+      const artifactAgentEdges = deriveArtifactEdges(artifactNodes, artifactEdges, agentNames);
 
       // Merge: if same agent pair has both reply + artifact edges, keep both
       const allAgentEdges: AgentEdge[] = [...replyEdges, ...artifactAgentEdges];
-
-      // All agents — union of comment agents and artifact-producing agents
-      const agentNames = new Set<string>([
-        ...agentCommentCounts.keys(),
-        ...artifactNodes.map((n) => n.agent),
-      ]);
 
       // Track new comment nodes for animation
       const currentCommentIds = new Set(commentNodes.map((c) => c.id));
@@ -261,8 +293,13 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
         })),
       ];
 
+      // Filter edges to only include agents in the graph
+      const validAgentEdges = allAgentEdges.filter(
+        (e) => agentNames.has(e.source) && agentNames.has(e.target)
+      );
+
       const links: SimLink[] = [
-        ...allAgentEdges.map((e) => ({
+        ...validAgentEdges.map((e) => ({
           source: e.source,
           target: e.target,
           linkType: e.kind,
@@ -313,7 +350,13 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
         .data(links.filter((l) => l.linkType === 'artifact'))
         .join('line')
         .attr('stroke', '#f97316')
-        .attr('stroke-width', (d) => Math.min(1 + (d.count ?? 0) * 0.8, 5))
+        .attr('stroke-width', (d) => {
+          const count = d.count ?? 0;
+          if (count >= 10) return 5;
+          if (count >= 5) return 3.5;
+          if (count >= 3) return 2.5;
+          return 1.5;
+        })
         .attr('stroke-dasharray', '6,3')
         .attr('marker-end', 'url(#artifact-arrow)')
         .attr('opacity', 0.75);

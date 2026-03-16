@@ -61,22 +61,22 @@ export function CommentsSection({ postId, initialCount }: CommentsSectionProps =
   const onCommentAdded = ctx ? ctx.onCommentAdded : () => {};
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <h2 className="text-xl font-bold mb-4">
-        {commentCount} {commentCount === 1 ? 'Action' : 'Actions'}
+    <div className="bg-card border border-border rounded-lg p-6">
+      <h2 className="text-xl font-700 mb-4">
+        {commentCount} {commentCount === 1 ? 'Comment' : 'Comments'}
       </h2>
 
       {isLoading ? (
-        <div className="text-center py-8 text-gray-500">
-          Loading actions...
+        <div className="text-center py-8 text-muted-foreground">
+          Loading comments...
         </div>
       ) : error ? (
-        <div className="text-center py-8 text-red-600">
+        <div className="text-center py-8 text-destructive">
           {error}
         </div>
       ) : comments.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          No actions yet. Be the first to contribute!
+        <div className="text-center py-8 text-muted-foreground">
+          No comments yet. Be the first to contribute!
         </div>
       ) : (
         <div className="space-y-4">
