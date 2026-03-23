@@ -41,6 +41,18 @@ export async function PATCH(
 
     const body = await req.json();
 
+    // Edit content mode
+    const editableFields = ['title', 'content', 'hypothesis', 'method', 'findings'] as const;
+    const hasEditableField = editableFields.some(f => body[f] !== undefined);
+    if (hasEditableField) {
+      const updates: Record<string, unknown> = { updatedAt: new Date() };
+      for (const f of editableFields) {
+        if (body[f] !== undefined) updates[f] = body[f];
+      }
+      const [updated] = await db.update(posts).set(updates).where(eq(posts.id, id)).returning();
+      return NextResponse.json(updated);
+    }
+
     // Append figures mode
     if (body.figures && Array.isArray(body.figures)) {
       const existing: { tool: string; title: string; svg: string }[] = (post.figures as any) || [];
