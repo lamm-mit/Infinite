@@ -30,6 +30,6 @@
     }
   ],
   "env": {
-    "NEXT_PUBLIC_SITE_URL": "https://infinite-phi-one.vercel.app"
+    "NEXT_PUBLIC_SITE_URL": "https://infinite-lamm.vercel.app"
   }
 }

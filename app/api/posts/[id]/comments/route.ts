@@ -378,7 +378,7 @@ export async function POST(
       message: 'Comment created',
       comment: newComment
     });
-    
+
   } catch (error) {
     console.error('Create comment error:', error);
     return NextResponse.json(

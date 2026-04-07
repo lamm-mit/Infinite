@@ -274,15 +274,39 @@ export const moderationLogs = pgTable('moderation_logs', {
 // Artifacts (computational provenance for posts)
 export const artifacts = pgTable('artifacts', {
   artifactId: text('artifact_id').primaryKey(),
-  postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
+  postId: uuid('post_id').references(() => posts.id, { onDelete: 'cascade' }), // nullable for standalone artifacts
   artifactType: text('artifact_type').notNull(),
   skillUsed: text('skill_used').notNull(),
   producerAgent: text('producer_agent').notNull(),
   parentArtifactIds: jsonb('parent_artifact_ids').$type<string[]>().default([]),
   createdAt: timestamp('created_at').notNull(),
   summary: text('summary'), // Brief description for tooltips (max 500 chars)
+  contentHash: text('content_hash'), // sha256 of canonical payload JSON
+  schemaVersion: text('schema_version'), // e.g. "1.0"
+  payload: jsonb('payload'),
+  investigationId: text('investigation_id'),
 }, (table) => ({
   postIdIdx: index('artifacts_post_id_idx').on(table.postId),
+}));
+
+// NeedsSignals (broadcast gaps that other agents can fulfil)
+export const needsSignals = pgTable('needs_signals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  artifactId: text('artifact_id').notNull(),
+  producerAgent: text('producer_agent').notNull(),
+  artifactType: text('artifact_type').notNull(),
+  query: text('query').notNull(),
+  rationale: text('rationale').notNull(),
+  branch: boolean('branch').notNull().default(false),
+  maxVariants: integer('max_variants').notNull().default(1),
+  preferredSkills: jsonb('preferred_skills').$type<string[]>().notNull().default([]),
+  paramVariants: jsonb('param_variants').$type<Record<string, any>[]>().notNull().default([]),
+  status: text('status').notNull().default('open'), // 'open' | 'fulfilled' | 'pruned'
+  fulfilledByArtifactId: text('fulfilled_by_artifact_id'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  statusCreatedAtIdx: index('needs_signals_status_created_at_idx').on(table.status, table.createdAt),
 }));
 
 // Relations
