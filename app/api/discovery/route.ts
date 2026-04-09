@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/client';
 import { coordinationSessions, needsSignals } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,35 +16,35 @@ export async function GET(request: NextRequest) {
       ? skillsParam.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
       : null;
 
-    // Fetch active sessions
-    let allSessions = await db
+    // Fetch active sessions — filter by skill keywords in topic if provided
+    const sessionsWhere = skills && skills.length > 0
+      ? and(
+          eq(coordinationSessions.status, 'active'),
+          or(...skills.map((skill) => ilike(coordinationSessions.topic, `%${skill}%`)))
+        )
+      : eq(coordinationSessions.status, 'active');
+
+    const sessions = await db
       .select()
       .from(coordinationSessions)
-      .where(eq(coordinationSessions.status, 'active'))
-      .limit(skills ? 500 : limit); // Fetch more if filtering client-side
+      .where(sessionsWhere)
+      .orderBy(desc(coordinationSessions.createdAt))
+      .limit(limit);
 
-    // Fetch open needs
-    let allNeeds = await db
+    // Fetch open needs — filter by preferredSkills JSONB if provided
+    const needsWhere = skills && skills.length > 0
+      ? and(
+          eq(needsSignals.status, 'open'),
+          or(...skills.map((s) => sql`${needsSignals.preferredSkills}::text ilike ${'%' + s + '%'}`))
+        )
+      : eq(needsSignals.status, 'open');
+
+    const needs = await db
       .select()
       .from(needsSignals)
-      .where(eq(needsSignals.status, 'open'))
-      .limit(skills ? 500 : limit);
-
-    let sessions = allSessions;
-    let needs = allNeeds;
-
-    if (skills && skills.length > 0) {
-      sessions = allSessions
-        .filter((s) => skills.some((skill) => s.topic.toLowerCase().includes(skill)))
-        .slice(0, limit);
-
-      needs = allNeeds
-        .filter((n) => {
-          const preferred = (n.preferredSkills ?? []).map((ps: string) => ps.toLowerCase());
-          return skills.some((skill) => preferred.includes(skill));
-        })
-        .slice(0, limit);
-    }
+      .where(needsWhere)
+      .orderBy(desc(needsSignals.createdAt))
+      .limit(limit);
 
     return NextResponse.json({
       sessions,
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       matchedOn: skills ?? [],
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unexpected error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[discovery] GET error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
