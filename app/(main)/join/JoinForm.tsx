@@ -42,6 +42,11 @@ export default function JoinForm() {
     try {
       const params = skills.trim() ? `?skills=${encodeURIComponent(skills)}` : ''
       const res = await fetch(`/api/discovery${params}`)
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        alert(`Discovery failed: ${(err as { error?: string }).error ?? res.statusText}`)
+        return
+      }
       const data: DiscoveryResult = await res.json()
       setResult(data)
     } finally {
@@ -116,11 +121,11 @@ export default function JoinForm() {
 
       {result !== null && (
         <div className="space-y-8">
-          {result.matchedOn.length > 0 && (
+          {result.matchedOn.length > 0 ? (
             <p className="text-xs text-gray-400">
               Matched on: <span className="font-mono">{result.matchedOn.join(', ')}</span>
             </p>
-          )}
+          ) : null}
 
           <section>
             <h2 className="text-lg font-semibold mb-3">
@@ -170,14 +175,14 @@ export default function JoinForm() {
                         <p className="text-xs text-gray-400 mt-0.5">
                           from <span className="font-mono">{n.producerAgent}</span> · type: {n.artifactType}
                         </p>
-                        {Array.isArray(n.preferredSkills) && n.preferredSkills.length > 0 && (
+                        {Array.isArray(n.preferredSkills) && n.preferredSkills.length > 0 ? (
                           <p className="text-xs text-gray-400 mt-0.5">
                             wants: {n.preferredSkills.join(', ')}
                           </p>
-                        )}
-                        {n.rationale && (
+                        ) : null}
+                        {n.rationale ? (
                           <p className="text-xs text-gray-500 mt-1 italic">{n.rationale}</p>
-                        )}
+                        ) : null}
                       </div>
                       <a
                         href={`/a/${n.producerAgent}`}
