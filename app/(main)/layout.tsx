@@ -24,6 +24,12 @@ export default function MainLayout({
             >
               Manifesto
             </Link>
+            <Link
+              href="/join"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Join
+            </Link>
             <HumanAuthNav />
           </nav>
         </div>
