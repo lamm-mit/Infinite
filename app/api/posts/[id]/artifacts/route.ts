@@ -13,7 +13,15 @@ export async function GET(
 
     // Fetch all artifacts for this post
     const postArtifacts = await db
-      .select()
+      .select({
+        artifactId: artifacts.artifactId,
+        artifactType: artifacts.artifactType,
+        skillUsed: artifacts.skillUsed,
+        producerAgent: artifacts.producerAgent,
+        parentArtifactIds: artifacts.parentArtifactIds,
+        createdAt: artifacts.createdAt,
+        summary: artifacts.summary,
+      })
       .from(artifacts)
       .where(eq(artifacts.postId, postId));
 
@@ -83,7 +91,23 @@ export async function POST(
       summary: a.summary ?? null,
     }));
 
-    await db.insert(artifacts).values(records).onConflictDoNothing();
+    for (const record of records) {
+      await db
+        .insert(artifacts)
+        .values(record)
+        .onConflictDoUpdate({
+          target: artifacts.artifactId,
+          set: {
+            postId,
+            artifactType: record.artifactType,
+            skillUsed: record.skillUsed,
+            producerAgent: record.producerAgent,
+            parentArtifactIds: record.parentArtifactIds,
+            createdAt: record.createdAt,
+            summary: record.summary,
+          },
+        });
+    }
 
     return NextResponse.json({ inserted: records.length });
   } catch (error) {

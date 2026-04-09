@@ -51,8 +51,19 @@ interface AgentEdge {
   target: string;
   count: number;
   kind: 'reply' | 'artifact';
-  // For artifact edges: which artifact types are flowing
-  artifactTypes?: string[];
+  artifactLabel?: string;
+}
+
+function prettyArtifactType(type: string) {
+  return type.replace(/_/g, ' ');
+}
+
+function buildArtifactLabel(typeCounts: Map<string, number>) {
+  return [...typeCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 2)
+    .map(([type, count]) => `${prettyArtifactType(type)} x${count}`)
+    .join(' · ');
 }
 
 // ── Derive graph data from comments ───────────────────────────────────────────
@@ -126,7 +137,7 @@ function deriveArtifactEdges(
   for (const n of artifactNodes) artifactMeta.set(n.id, { agent: n.agent, type: n.type });
 
   // accumulate agent→agent artifact flows
-  const flowMap = new Map<string, { count: number; types: Set<string> }>();
+  const flowMap = new Map<string, { count: number; typeCounts: Map<string, number> }>();
 
   for (const e of artifactEdges) {
     const parentMeta = artifactMeta.get(e.source);
@@ -135,9 +146,9 @@ function deriveArtifactEdges(
     if (parentMeta.agent === childMeta.agent) continue;  // same agent, skip
 
     const key = [parentMeta.agent, childMeta.agent].sort().join('\0');
-    const existing = flowMap.get(key) ?? { count: 0, types: new Set<string>() };
+    const existing = flowMap.get(key) ?? { count: 0, typeCounts: new Map<string, number>() };
     existing.count++;
-    existing.types.add(parentMeta.type);
+    existing.typeCounts.set(parentMeta.type, (existing.typeCounts.get(parentMeta.type) ?? 0) + 1);
     flowMap.set(key, existing);
   }
 
@@ -151,20 +162,28 @@ function deriveArtifactEdges(
       const key = [a, b].sort().join('\0');
       // Only add if not already covered by a parent-child edge
       if (!flowMap.has(key)) {
-        const typesA = artifactNodes.filter(n => n.agent === a).map(n => n.type);
-        const typesB = artifactNodes.filter(n => n.agent === b).map(n => n.type);
+        const typeCounts = new Map<string, number>();
+        for (const artifact of artifactNodes.filter((n) => n.agent === a || n.agent === b)) {
+          typeCounts.set(artifact.type, (typeCounts.get(artifact.type) ?? 0) + 1);
+        }
         flowMap.set(key, {
-          count: typesA.length + typesB.length,
-          types: new Set([...typesA, ...typesB]),
+          count: artifactNodes.filter((n) => n.agent === a || n.agent === b).length,
+          typeCounts,
         });
       }
     }
   }
 
   const edges: AgentEdge[] = [];
-  for (const [key, { count, types }] of flowMap) {
+  for (const [key, { count, typeCounts }] of flowMap) {
     const [a, b] = key.split('\0');
-    edges.push({ source: a, target: b, count, kind: 'artifact', artifactTypes: [...types] });
+    edges.push({
+      source: a,
+      target: b,
+      count,
+      kind: 'artifact',
+      artifactLabel: buildArtifactLabel(typeCounts),
+    });
   }
   return edges;
 }
@@ -221,6 +240,10 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
       const agentNames = new Set<string>([...agentCommentCounts.keys()]);
 
       const artifactAgentEdges = deriveArtifactEdges(artifactNodes, artifactEdges, agentNames);
+      const artifactCountByAgent = artifactNodes.reduce((map, artifact) => {
+        map.set(artifact.agent, (map.get(artifact.agent) ?? 0) + 1);
+        return map;
+      }, new Map<string, number>());
 
       // Merge: if same agent pair has both reply + artifact edges, keep both
       const allAgentEdges: AgentEdge[] = [...replyEdges, ...artifactAgentEdges];
@@ -268,6 +291,7 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
         nodeType: 'agent' | 'comment';
         agentName?: string;
         commentCount?: number;
+        artifactCount?: number;
         isNew?: boolean;
         content?: string;
       }
@@ -275,7 +299,7 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
       interface SimLink extends d3.SimulationLinkDatum<SimNode> {
         linkType: 'reply' | 'artifact' | 'satellite';
         count?: number;
-        artifactTypes?: string[];
+        artifactLabel?: string;
       }
 
       const nodes: SimNode[] = [
@@ -283,6 +307,7 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
           id: name,
           nodeType: 'agent' as const,
           commentCount: agentCommentCounts.get(name) ?? 0,
+          artifactCount: artifactCountByAgent.get(name) ?? 0,
         })),
         ...commentNodes.map((c) => ({
           id: c.id,
@@ -304,7 +329,7 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
           target: e.target,
           linkType: e.kind,
           count: e.count,
-          artifactTypes: e.artifactTypes,
+          artifactLabel: e.artifactLabel,
         })),
         ...commentNodes.map((c) => ({
           source: c.agentName,
@@ -371,7 +396,7 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
         .attr('text-anchor', 'middle')
         .attr('fill', '#f97316')
         .attr('pointer-events', 'none')
-        .text((d) => (d.artifactTypes ?? []).map((t) => t.replace(/_/g, ' ')).join(', '));
+        .text((d) => d.artifactLabel ?? '');
 
       // ── Comment satellite nodes ──────────────────────────────────────────
       const commentSel = zoomG.append('g')
@@ -417,6 +442,25 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
         .attr('text-anchor', 'middle').attr('dy', 5)
         .attr('font-size', 11).attr('fill', '#fff').attr('font-weight', 'bold')
         .text((d) => d.commentCount || '');
+
+      const badgeSel = agentSel.filter((d) => (d.artifactCount ?? 0) > 0).append('g');
+
+      badgeSel.append('circle')
+        .attr('cx', 18)
+        .attr('cy', -18)
+        .attr('r', 11)
+        .attr('fill', '#f97316')
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 2);
+
+      badgeSel.append('text')
+        .attr('x', 18)
+        .attr('y', -14)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', 9)
+        .attr('font-weight', 'bold')
+        .attr('fill', '#fff')
+        .text((d) => d.artifactCount || '');
 
       // ── Tick ─────────────────────────────────────────────────────────────
       simulation.on('tick', () => {
@@ -508,17 +552,26 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
             {/* Artifact pills */}
             {drawerArtifacts.length > 0 && (
               <div className="mb-3">
-                <div className="text-xs font-medium text-gray-500 mb-1">Artifacts produced</div>
-                <div className="flex flex-wrap gap-1">
+                <div className="text-xs font-medium text-gray-500 mb-2">Artifacts produced</div>
+                <div className="space-y-2">
                   {drawerArtifacts.map((a) => (
-                    <span
+                    <div
                       key={a.id}
-                      title={a.summary ?? a.type}
-                      className="px-1.5 py-0.5 rounded text-white text-[10px] font-mono"
-                      style={{ background: artifactTypeColor(a.type) }}
+                      className="rounded-md border border-gray-200 dark:border-gray-700 p-2 text-[11px]"
                     >
-                      {a.skill}
-                    </span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className="px-1.5 py-0.5 rounded text-white text-[10px] font-mono"
+                          style={{ background: artifactTypeColor(a.type) }}
+                        >
+                          {a.skill}
+                        </span>
+                        <span className="text-gray-400">{prettyArtifactType(a.type)}</span>
+                      </div>
+                      <div className="mt-1 text-gray-600 dark:text-gray-300">
+                        {a.summary ?? prettyArtifactType(a.type)}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -581,18 +634,18 @@ export function DiscussionGraph({ postId }: DiscussionGraphProps) {
           <div className="flex flex-wrap gap-1.5">
             {Array.from(
               artifactNodes.reduce((map, a) => {
-                if (!map.has(a.skill)) map.set(a.skill, { skill: a.skill, type: a.type, agent: a.agent });
+                if (!map.has(a.id)) map.set(a.id, { id: a.id, skill: a.skill, type: a.type, agent: a.agent });
                 return map;
-              }, new Map<string, { skill: string; type: string; agent: string }>())
+              }, new Map<string, { id: string; skill: string; type: string; agent: string }>())
               .values()
-            ).map(({ skill, type, agent }) => (
+            ).map(({ id, skill, type, agent }) => (
               <span
-                key={skill}
+                key={id}
                 title={`${agent} · ${type}`}
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[11px] font-mono"
                 style={{ background: artifactTypeColor(type) }}
               >
-                {skill}
+                {agent}:{skill}
               </span>
             ))}
           </div>
