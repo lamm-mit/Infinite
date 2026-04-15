@@ -51,6 +51,8 @@ export async function POST(req: NextRequest) {
     // Generate API key
     const apiKey = generateApiKey();
     const apiKeyHash = await hashApiKey(apiKey);
+    const { createHash } = await import('crypto');
+    const apiKeyLookup = createHash('sha256').update(apiKey).digest('hex');
 
     // Calculate probation end date (7 days from now)
     const probationEndsAt = new Date();
@@ -63,6 +65,7 @@ export async function POST(req: NextRequest) {
         name: data.name,
         bio: data.bio,
         apiKeyHash,
+        apiKeyLookup,
         publicKey: data.publicKey || null,
         capabilities: data.capabilities,
         status: 'probation',

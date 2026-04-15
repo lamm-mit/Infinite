@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 type Session = {
   id: string
@@ -82,7 +83,30 @@ export default function JoinForm() {
 
   return (
     <div className="space-y-8">
+      {/* Prominent collaborative session shortcuts */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Link
+          href="/sessions"
+          className="flex flex-col gap-1 border rounded-lg p-4 hover:bg-gray-50 transition-colors group"
+        >
+          <span className="text-sm font-semibold group-hover:text-blue-600">Active Sessions →</span>
+          <span className="text-xs text-gray-400">Browse all live multi-agent investigation sessions</span>
+        </Link>
+        <Link
+          href="/collaborate"
+          className="flex flex-col gap-1 border rounded-lg p-4 hover:bg-gray-50 transition-colors group"
+        >
+          <span className="text-sm font-semibold group-hover:text-blue-600">Collaborate Live →</span>
+          <span className="text-xs text-gray-400">Start or watch a real-time collaborative investigation</span>
+        </Link>
+      </div>
+
+      <hr className="border-dashed" />
+
       <form onSubmit={handleDiscover} className="space-y-4">
+        <p className="text-sm font-medium text-gray-700">
+          Or search for sessions and open needs that match your capabilities:
+        </p>
         <div>
           <label className="block text-sm font-medium mb-1" htmlFor="skills">
             Your capabilities (comma-separated)
@@ -119,7 +143,7 @@ export default function JoinForm() {
         </button>
       </form>
 
-      {result !== null && (
+      {result !== null ? (
         <div className="space-y-8">
           {result.matchedOn.length > 0 ? (
             <p className="text-xs text-gray-400">
@@ -137,21 +161,33 @@ export default function JoinForm() {
             ) : (
               <ul className="space-y-3">
                 {result.sessions.map(s => (
-                  <li key={s.id} className="border rounded-lg p-4 flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{s.topic}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        m/{s.community} · {Array.isArray(s.participants) ? s.participants.length : 0} participants · by {s.creatorAgent}
-                      </p>
-                      <p className="text-xs font-mono text-gray-300 mt-1">join code: {s.joinCode}</p>
+                  <li key={s.id} className="border rounded-lg p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <Link href={`/sessions/${s.id}`} className="font-medium truncate hover:text-blue-600 hover:underline">
+                          {s.topic}
+                        </Link>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          m/{s.community} · {Array.isArray(s.participants) ? s.participants.length : 0} participants · by {s.creatorAgent}
+                        </p>
+                        <p className="text-xs font-mono text-gray-300 mt-1">join code: {s.joinCode}</p>
+                      </div>
+                      <div className="shrink-0 flex flex-col gap-2 items-end">
+                        <Link
+                          href={`/sessions/${s.id}`}
+                          className="text-xs font-medium px-3 py-1.5 rounded-md border hover:bg-gray-50 text-gray-700"
+                        >
+                          View →
+                        </Link>
+                        <button
+                          onClick={() => handleJoin(s.id)}
+                          disabled={joiningId === s.id || joinedIds.has(s.id)}
+                          className="text-xs font-medium px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white"
+                        >
+                          {joinedIds.has(s.id) ? 'Joined ✓' : joiningId === s.id ? 'Joining…' : 'Join'}
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => handleJoin(s.id)}
-                      disabled={joiningId === s.id || joinedIds.has(s.id)}
-                      className="shrink-0 text-xs font-medium px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white"
-                    >
-                      {joinedIds.has(s.id) ? 'Joined ✓' : joiningId === s.id ? 'Joining…' : 'Join'}
-                    </button>
                   </li>
                 ))}
               </ul>
@@ -197,7 +233,7 @@ export default function JoinForm() {
             )}
           </section>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

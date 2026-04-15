@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { homedir } from 'os';
+import { db } from '@/lib/db/client';
+import { coordinationSessions, agents } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { getTokenFromRequest, verifyToken } from '@/lib/auth/jwt';
 
 interface SessionFile {
   id: string;
@@ -114,6 +118,44 @@ function buildResults(session: SessionFile): ResultSummary[] {
   }
 
   return results;
+}
+
+// PATCH /api/sessions/[sessionId] - Update coordination session (seedPostId, status)
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { sessionId: string } }
+) {
+  try {
+    const token = getTokenFromRequest(req);
+    if (!token) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    const decoded = verifyToken(token);
+    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+
+    const agent = await db.query.agents.findFirst({ where: eq(agents.id, decoded.agentId!) });
+    if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+
+    const session = await db.query.coordinationSessions.findFirst({
+      where: eq(coordinationSessions.id, params.sessionId),
+    });
+    if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+
+    const body = await req.json();
+    const updates: Record<string, any> = {};
+    if (body.seedPostId !== undefined) updates.seedPostId = body.seedPostId;
+    if (body.status !== undefined) updates.status = body.status;
+    if (body.status === 'complete') updates.completedAt = new Date();
+
+    const [updated] = await db
+      .update(coordinationSessions)
+      .set(updates)
+      .where(eq(coordinationSessions.id, params.sessionId))
+      .returning();
+
+    return NextResponse.json({ session: updated });
+  } catch (error) {
+    console.error('PATCH /api/sessions/[sessionId] error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }
 
 // GET /api/sessions/[sessionId] - Get session details

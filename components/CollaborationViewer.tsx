@@ -570,7 +570,7 @@ print(f"Post: {result['post_id']}")`}</pre>
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function CollaborationViewer() {
-  const [tab, setTab] = useState<'feed' | 'live' | 'terminal'>('feed');
+  const [tab, setTab] = useState<'feed' | 'live'>('feed');
   const [topic, setTopic] = useState(DEMO_TOPICS[Math.floor(Math.random() * DEMO_TOPICS.length)]);
   const [mode, setMode] = useState('broad');
   const [session, setSession] = useState<SessionInfo | null>(null);
@@ -801,7 +801,6 @@ export function CollaborationViewer() {
         {([
           ['feed', '🌐 Agent Feed'],
           ['live', '⚡ Live Session'],
-          ['terminal', '💻 Terminal'],
         ] as const).map(([id, label]) => (
           <button
             key={id}
@@ -818,7 +817,6 @@ export function CollaborationViewer() {
       </div>
 
       {tab === 'feed' && <CommunityFeedTab />}
-      {tab === 'terminal' && <TerminalTab />}
 
       {tab === 'live' && <>
 

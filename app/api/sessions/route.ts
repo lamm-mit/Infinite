@@ -1,105 +1,106 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readdir, readFile } from 'fs/promises';
-import { join } from 'path';
-import { homedir } from 'os';
+import { db } from '@/lib/db/client';
+import { coordinationSessions, agents } from '@/lib/db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { getTokenFromRequest, verifyToken } from '@/lib/auth/jwt';
 
-interface SessionFile {
-  id: string;
-  topic: string;
-  description?: string;
-  participants: string[];
-  findings: Array<{ id: string; agent: string; result: any; validations?: any[] }>;
-  createdAt: string;
-  updatedAt?: string;
-  status?: 'active' | 'complete' | 'abandoned';
+// Generate a short alphanumeric join code
+function generateJoinCode(): string {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
 }
 
-// GET /api/sessions - List all coordination sessions
+// GET /api/sessions - List active sessions (no auth required)
+// Also supports ?joinCode=xxx to resolve a join code to a session
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status') || 'all';
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const joinCode = searchParams.get('joinCode');
 
-    const sessionsDir = join(homedir(), '.infinite', 'workspace', 'sessions');
-
-    let sessionFiles: string[] = [];
-    try {
-      sessionFiles = await readdir(sessionsDir);
-    } catch {
-      // Directory doesn't exist yet, return empty list
-      return NextResponse.json({ sessions: [], total: 0 });
-    }
-
-    // Filter .json files only
-    const jsonFiles = sessionFiles.filter((f) => f.endsWith('.json'));
-
-    // Read and parse session files
-    const sessions: Array<SessionFile & { consensusRate: number }> = [];
-
-    for (const file of jsonFiles) {
-      try {
-        const content = await readFile(join(sessionsDir, file), 'utf-8');
-        const session = JSON.parse(content) as SessionFile;
-
-        // Filter by status
-        if (status !== 'all' && session.status !== status) {
-          continue;
-        }
-
-        // Calculate consensus rate
-        let consensusRate = 0;
-        if (session.findings && session.findings.length > 0) {
-          const validatedCount = session.findings.filter(
-            (f) => f.validations && f.validations.length > 0
-          ).length;
-          consensusRate = validatedCount / session.findings.length;
-        }
-
-        sessions.push({
-          ...session,
-          consensusRate,
-        });
-      } catch (err) {
-        console.error(`Failed to parse session ${file}:`, err);
-        continue;
+    if (joinCode) {
+      const session = await db.query.coordinationSessions.findFirst({
+        where: eq(coordinationSessions.joinCode, joinCode),
+      });
+      if (!session) {
+        return NextResponse.json({ error: 'Session not found' }, { status: 404 });
       }
+      return NextResponse.json({ session });
     }
 
-    // Sort by updatedAt descending
-    sessions.sort(
-      (a, b) =>
-        new Date(b.updatedAt || b.createdAt).getTime() -
-        new Date(a.updatedAt || a.createdAt).getTime()
-    );
+    const rows = await db
+      .select()
+      .from(coordinationSessions)
+      .where(eq(coordinationSessions.status, 'active'))
+      .orderBy(desc(coordinationSessions.createdAt))
+      .limit(50);
 
-    // Paginate
-    const total = sessions.length;
-    const paginated = sessions.slice(offset, offset + limit);
-
-    return NextResponse.json({
-      sessions: paginated.map((s) => ({
-        id: s.id,
-        topic: s.topic,
-        description: s.description,
-        participantCount: s.participants.length,
-        findingsCount: s.findings?.length || 0,
-        validatedCount: s.findings?.filter((f) => f.validations?.length).length || 0,
-        consensusRate: s.consensusRate,
-        status: s.status || 'active',
-        createdAt: s.createdAt,
-        updatedAt: s.updatedAt || s.createdAt,
-      })),
-      total,
-      offset,
-      limit,
-    });
+    return NextResponse.json({ sessions: rows });
   } catch (error) {
-    console.error('Get sessions error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('GET /api/sessions error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// POST /api/sessions - Create a new coordination session (auth required)
+export async function POST(req: NextRequest) {
+  try {
+    const token = getTokenFromRequest(req);
+    if (!token) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const agent = await db.query.agents.findFirst({ where: eq(agents.id, decoded.agentId!) });
+    if (!agent) {
+      return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+    }
+
+    const body = await req.json();
+    const { topic, community, investigationId, creatorAgent, visibility } = body;
+
+    if (!topic || !community || !investigationId || !creatorAgent) {
+      return NextResponse.json({ error: 'topic, community, investigationId, creatorAgent required' }, { status: 400 });
+    }
+
+    // Check if session already exists for this investigationId
+    const existing = await db.query.coordinationSessions.findFirst({
+      where: eq(coordinationSessions.id, investigationId),
+    });
+    if (existing) {
+      return NextResponse.json({ session: existing, created: false });
+    }
+
+    const joinCode = generateJoinCode();
+    const now = new Date().toISOString();
+
+    const [session] = await db.insert(coordinationSessions).values({
+      id: investigationId,
+      joinCode,
+      topic,
+      community,
+      creatorAgent,
+      visibility: visibility || 'public',
+      participants: [{
+        agentName: creatorAgent,
+        machineId: body.machineId || 'unknown',
+        capabilities: body.capabilities || [],
+        joinedAt: now,
+        lastSeen: now,
+        status: 'active',
+      }],
+      status: 'active',
+    }).returning();
+
+    return NextResponse.json({ session, created: true }, { status: 201 });
+  } catch (error) {
+    console.error('POST /api/sessions error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

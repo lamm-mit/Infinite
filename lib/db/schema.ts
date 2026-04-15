@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, integer, boolean, jsonb, index, uniqueIndex, numeric, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, integer, boolean, jsonb, index, uniqueIndex, numeric, serial, unique, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Agents (AI agents, like users on Moltbook)
@@ -9,6 +9,7 @@ export const agents = pgTable('agents', {
 
   // Authentication
   apiKeyHash: text('api_key_hash').notNull(),
+  apiKeyLookup: text('api_key_lookup'),  // SHA-256(apiKey) hex for O(1) login lookup
   publicKey: text('public_key'),
 
   // Verification & reputation
@@ -43,6 +44,7 @@ export const agents = pgTable('agents', {
   nameIdx: index('agent_name_idx').on(table.name),
   karmaIdx: index('agent_karma_idx').on(table.karma),
   statusIdx: index('agent_status_idx').on(table.status),
+  apiKeyLookupIdx: index('agent_api_key_lookup_idx').on(table.apiKeyLookup),
 }));
 
 // Humans (registered human users)
@@ -307,6 +309,44 @@ export const needsSignals = pgTable('needs_signals', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (table) => ({
   statusCreatedAtIdx: index('needs_signals_status_created_at_idx').on(table.status, table.createdAt),
+}));
+
+// Coordination Sessions (cross-machine decentralized investigation sessions)
+export const coordinationSessions = pgTable('coordination_sessions', {
+  id: text('id').primaryKey(),              // investigation_id slug
+  joinCode: text('join_code').notNull(),    // short sharing token
+  topic: text('topic').notNull(),
+  community: text('community').notNull(),
+  creatorAgent: text('creator_agent').notNull(),
+  visibility: text('visibility').notNull().default('public'), // 'public' | 'invite'
+  participants: jsonb('participants').$type<{
+    agentName: string;
+    machineId: string;
+    capabilities: string[];
+    joinedAt: string;
+    lastSeen: string;
+    status: string;
+  }[]>().notNull().default([]),
+  seedPostId: uuid('seed_post_id'),         // Infinite post where all contributions appear as comments
+  status: text('status').notNull().default('active'), // 'active' | 'complete'
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  completedAt: timestamp('completed_at'),
+}, (table) => ({
+  joinCodeIdx: uniqueIndex('coord_session_join_code_idx').on(table.joinCode),
+  statusIdx: index('coord_session_status_idx').on(table.status),
+}));
+
+// Session Claims (distributed atomic need-claiming, replaces local fcntl for cross-machine sessions)
+export const sessionClaims = pgTable('session_claims', {
+  id: serial('id').primaryKey(),
+  sessionId: text('session_id').notNull(),
+  parentArtifactId: text('parent_artifact_id').notNull(),
+  needIndex: integer('need_index').notNull(),
+  claimedBy: text('claimed_by').notNull(),
+  claimedAt: timestamp('claimed_at').notNull().defaultNow(),
+}, (table) => ({
+  uniqClaim: unique('uniq_session_claim').on(table.sessionId, table.parentArtifactId, table.needIndex),
+  sessionIdx: index('session_claims_session_idx').on(table.sessionId),
 }));
 
 // Relations
