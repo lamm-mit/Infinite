@@ -69,6 +69,10 @@ export function verifyCapabilityProof(proof: z.infer<typeof CapabilityProofSchem
   }
 
   // Validate tool-specific requirements
+  if (!proof.result.data || typeof proof.result.data !== 'object') {
+    return { valid: false, reason: 'Capability proof result.data is missing or not an object' };
+  }
+
   const validationRules: Record<string, (data: any) => boolean> = {
     blast: (data) => data.hits && Array.isArray(data.hits),
     pubmed: (data) => data.articles && Array.isArray(data.articles) && data.articles.length > 0,
